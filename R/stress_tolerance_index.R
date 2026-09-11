@@ -81,7 +81,8 @@ compute_tolerance_index <- function(name, yp, ys, mean_yp, mean_ys) {
 #' @param treatment Name of the treatment column.
 #' @param control Level of `treatment` used as the non-stress environment.
 #' @param by Name of the column identifying the units being compared, typically
-#'   genotype. Required: every index is relative to the trial means.
+#'   genotype, or a vector of several. Required: every index is relative to the
+#'   trial means, so the set of units defines the trial.
 #' @param indices Character vector of indices to compute. Defaults to all ten.
 #' @param fun Function used to summarize `trait` within each unit and treatment.
 #'
@@ -134,7 +135,7 @@ stress_tolerance_index <- function(data,
                                    fun = mean) {
   check_data(data)
   check_column(data, treatment, "treatment")
-  check_column(data, by, "by")
+  by <- check_by(data, by)
   check_column(data, trait, "trait")
   if (!is.numeric(data[[trait]])) {
     ps_abort(paste0("Trait column `", trait, "` must be numeric."))
@@ -167,7 +168,7 @@ stress_tolerance_index <- function(data,
     ps_abort("At least one stress level is required.")
   }
 
-  unit <- as.character(data[[by]])
+  unit <- unit_labels(data, by)
   units <- sort(unique(stats::na.omit(unit)))
   if (length(units) < 2L) {
     ps_abort(paste0(

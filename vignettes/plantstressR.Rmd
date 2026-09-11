@@ -256,6 +256,46 @@ each trait at the scaling the observed trial gave it and lets only the response
 vary. Use `scale = "resampled"` if you want the stricter reading, and expect
 long upper tails.
 
+## Step 4c — more than one site, or more than one year
+
+Everything so far describes a single trial. A breeding programme rarely stops
+there: the same genotypes are grown at several sites, or repeated across
+seasons, and the question becomes whether a ranking obtained in one place
+travels to the next.
+
+Name both columns in `by`. Each genotype is then indexed at each site against
+the control of that site, which is the right comparison — a drought treatment
+in a dry year is not the same treatment as in a wet one:
+
+```{r met}
+met <- brachiaria_stress
+met$site <- ifelse(met$block %in% c("B1", "B2"), "north", "south")
+
+met_sri <- calculate_sri(met,
+  treatment = "drought_level",
+  control = "control",
+  traits = traits,
+  by = c("genotype", "site"),
+  verbose = FALSE
+)
+
+stability <- stress_stability(integrated_stress_index(met_sri))
+stability
+```
+
+Three columns carry the message. `sd_isi` is how much a genotype's index moved
+between sites. `rank_min` and `rank_max` are the best and worst positions it
+occupied — when they span most of the table, that genotype's ranking is not
+portable. And `ecovalence_pct` is Wricke's share of the genotype-by-environment
+interaction, so the material responsible for the instability of the whole trial
+can be named rather than guessed at.
+
+```{r met-plot, fig.height = 3.6}
+plot(stability)
+```
+
+Bottom left is where you want to be: little affected, and the same everywhere.
+
 ## Step 5 — how the traits interact
 
 A signature says *what* changed. The network says *what changed together*.

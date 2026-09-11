@@ -1,3 +1,36 @@
+# plantstressR 0.5.0
+
+Multi-environment trials.
+
+## New features
+
+* `by` now accepts several columns. `by = c("genotype", "site")` analyses each
+  genotype at each site against the control of that cell, which is how a
+  multi-site or multi-year trial is described. The levels are pasted into one
+  `unit` label so that every downstream table keeps a single key.
+* `stress_stability()` summarizes such a trial: how severely each genotype was
+  affected on average, and how consistently. It reports the spread of the index
+  across environments (`sd_isi`, `cv_isi`), the spread of the genotype's
+  position (`mean_rank`, `rank_min`, `rank_max`) and Wricke's `ecovalence`,
+  the share of the genotype-by-environment interaction each genotype carries --
+  computed on the integrated index rather than on yield. A genotype that ranks
+  first at one site and last at the next is a different proposition from one
+  that ranks second everywhere, and a mean hides the difference.
+* `plot()` on the result places severity against consistency, so the material
+  that is both tolerant and predictable sits in one corner.
+* The dashboard gains an environment picker and an "Across environments" tab.
+
+## Details worth knowing
+
+* Ecovalence needs a complete genotype-by-environment table and at least two of
+  each; genotypes missing from some environments are kept, with `n_env` saying
+  how many they appeared in, but their ecovalence is `NA`.
+* Ranks inside `stress_stability()` are recomputed within each environment, so
+  they describe a genotype's standing among the material it was actually grown
+  beside.
+* `validate_stress_data()` checks every grouping column, and reports cells that
+  have no control observations using the full combination of levels.
+
 # plantstressR 0.4.0
 
 An uncertainty statement for the ranking.

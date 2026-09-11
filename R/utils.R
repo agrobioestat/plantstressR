@@ -57,6 +57,58 @@ check_p_adjust <- function(method) {
   invisible(method)
 }
 
+# Grouping columns -------------------------------------------------------
+# `by` may name more than one column, which is how a multi-environment trial is
+# described: by = c("genotype", "site") analyses each genotype at each site
+# against that cell's own control. The levels are pasted into one label so that
+# every downstream table keeps a single `unit` key.
+
+PS_UNIT_SEP <- " | "
+
+check_by <- function(data, by) {
+  if (is.null(by)) {
+    return(NULL)
+  }
+  if (!is.character(by) || length(by) == 0L || anyNA(by)) {
+    ps_abort("`by` must be `NULL` or a character vector of column names.")
+  }
+  if (anyDuplicated(by) > 0L) {
+    ps_abort("`by` names the same column more than once.")
+  }
+  for (nm in by) check_column(data, nm, "by")
+  by
+}
+
+unit_labels <- function(data, by) {
+  if (is.null(by)) {
+    return(rep("overall", nrow(data)))
+  }
+  parts <- lapply(by, function(nm) as.character(data[[nm]]))
+  if (length(parts) == 1L) {
+    return(parts[[1]])
+  }
+  do.call(paste, c(parts, list(sep = PS_UNIT_SEP)))
+}
+
+# Split a composite unit label back into the columns that built it.
+split_unit_labels <- function(x, by) {
+  if (length(by) < 2L) {
+    out <- list(x)
+    names(out) <- by
+    return(tibble::as_tibble(out))
+  }
+  pieces <- strsplit(x, PS_UNIT_SEP, fixed = TRUE)
+  if (any(lengths(pieces) != length(by))) {
+    ps_abort(paste0(
+      "The unit labels cannot be split back into ", paste(by, collapse = ", "),
+      "; a level probably contains the separator \"", PS_UNIT_SEP, "\"."
+    ))
+  }
+  out <- lapply(seq_along(by), function(i) vapply(pieces, `[[`, character(1), i))
+  names(out) <- by
+  tibble::as_tibble(out)
+}
+
 # Resolve which columns are physiological traits. Columns used as design
 # factors are always excluded, even when they happen to be numeric.
 resolve_traits <- function(data, traits = NULL, exclude = character()) {

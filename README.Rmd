@@ -50,9 +50,12 @@ remotes::install_github("agrobioestat/plantstressR")
 | `stress_tolerance_index()` | The classical selection indices (`STI`, `SSI`, `GMP`, `TOL`, ...) |
 | `stress_ordination()` | The sample-level view of the trait space |
 | `stress_index_ci()` | Bootstrap limits and rank stability for the ranking |
+| `stress_stability()` | Severity and consistency across sites or years |
 | `run_plantstress_app()` | The whole workflow in a Shiny dashboard, no code |
 
-Every design function takes `block =` for randomized complete block designs.
+Every design function takes `block =` for randomized complete block designs,
+and `by =` accepts several columns, so `by = c("genotype", "site")` covers a
+multi-environment trial.
 
 ## Point and click
 
@@ -113,6 +116,28 @@ stress_index_ci(sri, n_boot = 200, seed = 1)
 `p_best` is the share of resamples in which a genotype came out the most
 tolerant one. A ranking whose winner sits at `p_best = 0.35` is a ranking you
 should not select on.
+
+For a trial run at more than one site or in more than one year, name both
+columns and ask which genotypes hold their position:
+
+```{r met}
+met <- brachiaria_stress
+met$site <- ifelse(met$block %in% c("B1", "B2"), "north", "south")
+
+met_sri <- calculate_sri(met,
+  treatment = "drought_level",
+  control = "control",
+  traits = traits,
+  by = c("genotype", "site"),
+  verbose = FALSE
+)
+
+stress_stability(integrated_stress_index(met_sri))
+```
+
+`ecovalence_pct` names the genotypes responsible for the instability of the
+trial: a genotype carrying most of the interaction is one whose ranking does
+not travel.
 
 Draw the signature:
 

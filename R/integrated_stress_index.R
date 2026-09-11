@@ -246,7 +246,10 @@ integrated_stress_index <- function(sri,
       weighting = w$scheme,
       aggregate = aggregate,
       rank_by = rank_by,
-      contributions = contributions
+      contributions = contributions,
+      # Carried from the SRI object so that stress_stability() can split the
+      # composite unit label back into genotype and environment.
+      by = sri_meta(sri)$by
     )
   )
 }

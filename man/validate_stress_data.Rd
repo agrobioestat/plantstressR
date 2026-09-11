@@ -30,8 +30,9 @@ validate_stress_data(
 column that is not a design column.}
 
 \item{by}{Optional name of a grouping column (typically genotype, cultivar or
-site). When supplied, every level must contain both control and stress
-observations.}
+site), or a vector of several -- \code{c("genotype", "site")} for a
+multi-environment trial. When supplied, every combination of levels must
+contain both control and stress observations.}
 
 \item{block}{Optional name of a block (replicate) column. When supplied, the
 design is additionally checked for enough block levels, for treatments

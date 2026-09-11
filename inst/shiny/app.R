@@ -53,6 +53,11 @@ ui <- fluidPage(
       selectInput("treatment", "Treatment column", choices = NULL),
       selectInput("control", "Control level", choices = NULL),
       selectInput("by", "Group by (genotype)", choices = NULL),
+      selectInput("environment", "Environment (site / year)", choices = NULL),
+      div(
+        class = "ps-hint",
+        "Set an environment only for a multi-site or multi-year trial."
+      ),
       selectInput("block", "Block column", choices = NULL),
       div(
         class = "ps-hint",
@@ -151,6 +156,22 @@ ui <- fluidPage(
           )
         ),
         tabPanel(
+          "Across environments",
+          div(
+            class = "ps-panel",
+            p(
+              "For multi-site or multi-year trials. Set an environment column ",
+              "on the left, then read which genotypes hold their position and ",
+              "which ones reshuffle. ", tags$b("ecovalence_pct"), " is the share ",
+              "of the genotype-by-environment interaction each one carries."
+            ),
+            plotOutput("stability_plot", height = "430px"),
+            downloadButton("dl_stability", "Download table"),
+            br(), br(),
+            tableOutput("stability_table")
+          )
+        ),
+        tabPanel(
           "Network",
           div(
             class = "ps-panel",
@@ -241,6 +262,9 @@ server <- function(input, output, session) {
       choices = c(NONE, categorical),
       selected = if (length(categorical) > 1) categorical[1] else NONE
     )
+    updateSelectInput(session, "environment",
+      choices = c(NONE, categorical), selected = NONE
+    )
     updateSelectInput(session, "block", choices = c(NONE, categorical), selected = NONE)
     updateSelectizeInput(session, "traits",
       choices = nums,
@@ -266,10 +290,15 @@ server <- function(input, output, session) {
   opt <- function(x) if (is.null(x) || identical(x, NONE) || !nzchar(x)) NULL else x
 
   design <- reactive({
+    env <- opt(input$environment)
+    by <- opt(input$by)
     list(
       treatment = input$treatment,
       control = input$control,
-      by = opt(input$by),
+      # The environment is just a second grouping column: one index per
+      # genotype per site, each against its own control.
+      by = if (is.null(env)) by else unique(c(by, env)),
+      environment = env,
       block = opt(input$block),
       traits = input$traits
     )
@@ -455,6 +484,36 @@ server <- function(input, output, session) {
     striped = TRUE, spacing = "xs", digits = 3
   )
 
+  # Across environments ---------------------------------------------------
+
+  stability <- reactive({
+    d <- design()
+    validate(need(
+      !is.null(d$environment),
+      "Choose an environment column on the left to compare sites or years."
+    ))
+    req(isi())
+    guard(
+      plantstressR::stress_stability(isi(), environment = d$environment),
+      "Stability"
+    )
+  })
+
+  output$stability_plot <- renderPlot({
+    req(stability())
+    p <- guard(plot(stability()), "Stability plot")
+    req(p)
+    p
+  })
+
+  output$stability_table <- renderTable(
+    {
+      req(stability())
+      as.data.frame(stability())
+    },
+    striped = TRUE, spacing = "xs", digits = 3
+  )
+
   # Network ---------------------------------------------------------------
 
   output$network_plot <- renderPlot({
@@ -546,6 +605,7 @@ server <- function(input, output, session) {
   output$dl_isi <- csv_handler("isi", isi)
   output$dl_sti <- csv_handler("tolerance_indices", sti)
   output$dl_ci <- csv_handler("ranking_uncertainty", ci)
+  output$dl_stability <- csv_handler("stability", stability)
 }
 
 shinyApp(ui, server)

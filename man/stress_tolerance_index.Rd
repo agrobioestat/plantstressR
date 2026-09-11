@@ -28,7 +28,8 @@ summarize.}
 \item{control}{Level of \code{treatment} used as the non-stress environment.}
 
 \item{by}{Name of the column identifying the units being compared, typically
-genotype. Required: every index is relative to the trial means.}
+genotype, or a vector of several. Required: every index is relative to the
+trial means, so the set of units defines the trial.}
 
 \item{indices}{Character vector of indices to compute. Defaults to all ten.}
 

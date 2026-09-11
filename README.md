@@ -37,10 +37,12 @@ remotes::install_github("agrobioestat/plantstressR")
 | `stress_tolerance_index()` | The classical selection indices (`STI`, `SSI`, `GMP`, `TOL`, …) |
 | `stress_ordination()` | The sample-level view of the trait space |
 | `stress_index_ci()` | Bootstrap limits and rank stability for the ranking |
+| `stress_stability()` | Severity and consistency across sites or years |
 | `run_plantstress_app()` | The whole workflow in a Shiny dashboard, no code |
 
 Every design function takes `block =` for randomized complete block
-designs.
+designs, and `by =` accepts several columns, so
+`by = c("genotype", "site")` covers a multi-environment trial.
 
 ## Point and click
 
@@ -146,6 +148,45 @@ stress_index_ci(sri, n_boot = 200, seed = 1)
 `p_best` is the share of resamples in which a genotype came out the most
 tolerant one. A ranking whose winner sits at `p_best = 0.35` is a
 ranking you should not select on.
+
+For a trial run at more than one site or in more than one year, name
+both columns and ask which genotypes hold their position:
+
+``` r
+met <- brachiaria_stress
+met$site <- ifelse(met$block %in% c("B1", "B2"), "north", "south")
+
+met_sri <- calculate_sri(met,
+  treatment = "drought_level",
+  control = "control",
+  traits = traits,
+  by = c("genotype", "site"),
+  verbose = FALSE
+)
+
+stress_stability(integrated_stress_index(met_sri))
+#> <plantstress_stability>
+#>   Genotype:     genotype
+#>   Environment:  site (2 levels)
+#>   Ranking:      tolerance (rank 1 = most tolerant, within each environment)
+#>   ecovalence = share of the genotype x environment interaction
+#> # A tibble: 8 × 11
+#>   unit  group    n_env mean_isi sd_isi cv_isi mean_rank rank_min rank_max
+#>   <chr> <chr>    <int>    <dbl>  <dbl>  <dbl>     <dbl>    <dbl>    <dbl>
+#> 1 G1    moderate     2     1.85  0.352   19.1       2.5        1        4
+#> 2 G2    moderate     2     2.59  1.56    60.4       2          2        2
+#> 3 G4    moderate     2     2.69  1.55    57.5       3          3        3
+#> 4 G3    moderate     2     3.87  3.93   102.        2.5        1        4
+#> 5 G1    severe       2     3.66  1.53    41.8       1          1        1
+#> 6 G2    severe       2     5.67  3.23    57.0       3          2        4
+#> 7 G4    severe       2     5.80  4.18    72.1       2.5        2        3
+#> 8 G3    severe       2     8.05  7.07    87.9       3.5        3        4
+#> # ℹ 2 more variables: ecovalence <dbl>, ecovalence_pct <dbl>
+```
+
+`ecovalence_pct` names the genotypes responsible for the instability of
+the trial: a genotype carrying most of the interaction is one whose
+ranking does not travel.
 
 Draw the signature:
 

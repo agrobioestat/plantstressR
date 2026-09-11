@@ -17,8 +17,9 @@
 #' @param traits Character vector of trait columns. Defaults to every numeric
 #'   column that is not a design column.
 #' @param by Optional name of a grouping column (typically genotype, cultivar or
-#'   site). When supplied, every level must contain both control and stress
-#'   observations.
+#'   site), or a vector of several -- `c("genotype", "site")` for a
+#'   multi-environment trial. When supplied, every combination of levels must
+#'   contain both control and stress observations.
 #' @param block Optional name of a block (replicate) column. When supplied, the
 #'   design is additionally checked for enough block levels, for treatments
 #'   confined to a single block (which cannot be separated from it) and for
@@ -57,7 +58,7 @@ validate_stress_data <- function(data,
                                  verbose = TRUE) {
   check_data(data)
   check_column(data, treatment, "treatment")
-  if (!is.null(by)) check_column(data, by, "by")
+  by <- check_by(data, by)
   if (!is.null(block)) check_column(data, block, "block")
   check_prob(max_missing, "max_missing")
   if (!is.numeric(min_replicates) || length(min_replicates) != 1L ||
@@ -104,7 +105,7 @@ validate_stress_data <- function(data,
     )
   }
 
-  unit <- if (is.null(by)) rep("overall", nrow(data)) else as.character(data[[by]])
+  unit <- unit_labels(data, by)
   design <- tibble::as_tibble(
     as.data.frame(table(unit = unit, group = trt), stringsAsFactors = FALSE)
   )
@@ -130,7 +131,8 @@ validate_stress_data <- function(data,
       add_issue(
         "error", "missing_control",
         paste0(
-          "Level(s) of `", by, "` without control observations: ",
+          "Level(s) of `", paste(by, collapse = "` x `"),
+          "` without control observations: ",
           paste(without_control, collapse = ", "), "."
         )
       )

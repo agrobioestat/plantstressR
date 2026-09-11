@@ -239,7 +239,11 @@ sri_effect_blocked <- function(value, trt, blk, control, stress_levels,
 #' @param traits Character vector of trait columns. Defaults to every numeric
 #'   column that is not a design column.
 #' @param by Optional grouping column (typically genotype). Indices are computed
-#'   within each level, against that level's own control.
+#'   within each level, against that level's own control. More than one column
+#'   may be named -- `by = c("genotype", "site")` describes a multi-environment
+#'   trial and analyses each genotype at each site against the control of that
+#'   cell. The levels are pasted into a single `unit` label, which
+#'   [stress_stability()] splits back apart.
 #' @param block Optional name of a block (replicate) column. When supplied, the
 #'   index is estimated from an additive `trait ~ treatment + block` model
 #'   within each unit, so that a replicate which happened to sit in a wetter
@@ -337,7 +341,7 @@ calculate_sri <- function(data,
   ori <- direction_sign(direction)
 
   trt <- as.character(data[[treatment]])
-  unit <- if (is.null(by)) rep("overall", nrow(data)) else as.character(data[[by]])
+  unit <- unit_labels(data, by)
   units <- unique(stats::na.omit(unit))
   blk <- if (is.null(block)) NULL else as.character(data[[block]])
 

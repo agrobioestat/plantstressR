@@ -3,7 +3,7 @@
 # blocks are relabelled, because a block drawn twice is two replicates of the
 # same stratum, not one stratum with twice the plants.
 resample_trial <- function(data, treatment, by, block) {
-  unit <- if (is.null(by)) rep("overall", nrow(data)) else as.character(data[[by]])
+  unit <- unit_labels(data, by)
   idx <- integer(0)
   new_block <- character(0)
 
@@ -88,11 +88,7 @@ cell_differences <- function(v, trt, blk, control, stress_levels) {
 # Every control-versus-stress difference of a resampled trial, in one table.
 boot_differences <- function(data, meta) {
   trt <- as.character(data[[meta$treatment]])
-  unit <- if (is.null(meta$by)) {
-    rep("overall", nrow(data))
-  } else {
-    as.character(data[[meta$by]])
-  }
+  unit <- unit_labels(data, meta$by)
   blk <- if (is.null(meta$block)) NULL else as.character(data[[meta$block]])
   stress_levels <- setdiff(unique(stats::na.omit(trt)), meta$control)
   if (length(stress_levels) == 0L) {

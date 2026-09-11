@@ -37,7 +37,11 @@ is treated as a stress level and compared against it.}
 column that is not a design column.}
 
 \item{by}{Optional grouping column (typically genotype). Indices are computed
-within each level, against that level's own control.}
+within each level, against that level's own control. More than one column
+may be named -- \code{by = c("genotype", "site")} describes a multi-environment
+trial and analyses each genotype at each site against the control of that
+cell. The levels are pasted into a single \code{unit} label, which
+\code{\link[=stress_stability]{stress_stability()}} splits back apart.}
 
 \item{block}{Optional name of a block (replicate) column. When supplied, the
 index is estimated from an additive \code{trait ~ treatment + block} model
