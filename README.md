@@ -17,6 +17,16 @@ the rest: it puts every trait on a common signed scale, integrates them
 into a single rankable index, draws the signature, and maps the network
 of traits that respond together.
 
+## Data to try it on
+
+| Data set | What it is for |
+|----|----|
+| `brachiaria_stress` | Four genotypes, three drought levels, four blocks, 29 traits |
+| `wheat_salinity` | Six cultivars at three sites: the multi-environment case |
+| `maize_heat` | Small and deliberately messy, to see what the design checks say |
+
+All three are simulated, and documented as such.
+
 ## Installation
 
 ``` r
@@ -150,43 +160,49 @@ tolerant one. A ranking whose winner sits at `p_best = 0.35` is a
 ranking you should not select on.
 
 For a trial run at more than one site or in more than one year, name
-both columns and ask which genotypes hold their position:
+both columns and ask which genotypes hold their position.
+`wheat_salinity` is six cultivars at three sites:
 
 ``` r
-met <- brachiaria_stress
-met$site <- ifelse(met$block %in% c("B1", "B2"), "north", "south")
-
-met_sri <- calculate_sri(met,
-  treatment = "drought_level",
+met_sri <- calculate_sri(
+  wheat_salinity,
+  treatment = "salinity",
   control = "control",
-  traits = traits,
-  by = c("genotype", "site"),
+  traits = c("Fv_Fm", "A", "RWC", "Na", "K", "MDA", "grain_yield"),
+  by = c("cultivar", "site"),
+  block = "block",
   verbose = FALSE
 )
 
 stress_stability(integrated_stress_index(met_sri))
 #> <plantstress_stability>
-#>   Genotype:     genotype
-#>   Environment:  site (2 levels)
+#>   Genotype:     cultivar
+#>   Environment:  site (3 levels)
 #>   Ranking:      tolerance (rank 1 = most tolerant, within each environment)
 #>   ecovalence = share of the genotype x environment interaction
-#> # A tibble: 8 × 11
-#>   unit  group    n_env mean_isi sd_isi cv_isi mean_rank rank_min rank_max
-#>   <chr> <chr>    <int>    <dbl>  <dbl>  <dbl>     <dbl>    <dbl>    <dbl>
-#> 1 G1    moderate     2     1.85  0.352   19.1       2.5        1        4
-#> 2 G2    moderate     2     2.59  1.56    60.4       2          2        2
-#> 3 G4    moderate     2     2.69  1.55    57.5       3          3        3
-#> 4 G3    moderate     2     3.87  3.93   102.        2.5        1        4
-#> 5 G1    severe       2     3.66  1.53    41.8       1          1        1
-#> 6 G2    severe       2     5.67  3.23    57.0       3          2        4
-#> 7 G4    severe       2     5.80  4.18    72.1       2.5        2        3
-#> 8 G3    severe       2     8.05  7.07    87.9       3.5        3        4
+#> # A tibble: 12 × 11
+#>    unit  group    n_env mean_isi sd_isi cv_isi mean_rank rank_min rank_max
+#>    <chr> <chr>    <int>    <dbl>  <dbl>  <dbl>     <dbl>    <dbl>    <dbl>
+#>  1 W2    moderate     3     2.81  0.638   22.7      2.33        1        3
+#>  2 W3    moderate     3     3.49  1.39    39.8      3           2        5
+#>  3 W5    moderate     3     4.11  2.45    59.5      3.67        2        5
+#>  4 W6    moderate     3     4.92  1.68    34.1      4.33        3        6
+#>  5 W1    moderate     3     5.22  6.00   115.       3.67        1        6
+#>  6 W4    moderate     3     5.49  4.00    72.9      4           1        6
+#>  7 W2    severe       3     5.02  0.985   19.6      2.33        1        4
+#>  8 W3    severe       3     7.55  3.32    44.0      3.33        2        5
+#>  9 W5    severe       3     8.63  4.23    49.0      4           3        5
+#> 10 W1    severe       3     9.38 10.5    112.       3.33        1        6
+#> 11 W6    severe       3    10.1   4.73    46.9      4           2        6
+#> 12 W4    severe       3    11.5   8.67    75.4      4           1        6
 #> # ℹ 2 more variables: ecovalence <dbl>, ecovalence_pct <dbl>
 ```
 
-`ecovalence_pct` names the genotypes responsible for the instability of
-the trial: a genotype carrying most of the interaction is one whose
-ranking does not travel.
+`ecovalence_pct` names the cultivars responsible for the instability of
+the trial. `W2` holds a narrow band of ranks wherever it is grown. `W4`
+runs from rank 2 to rank 17 depending on the site — a cultivar you
+cannot select on from a single trial, and one you would have called
+excellent had you only visited the upland site.
 
 Draw the signature:
 

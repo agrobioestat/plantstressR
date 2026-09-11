@@ -73,19 +73,20 @@ many they appeared in, but their ecovalence is \code{NA}: an unbalanced
 genotype-by-environment table has no meaningful interaction decomposition.
 }
 \examples{
-data(brachiaria_stress)
+data(wheat_salinity)
 
-# Two sites, by splitting the blocks of the bundled trial.
-met <- brachiaria_stress
-met$site <- ifelse(met$block \%in\% c("B1", "B2"), "north", "south")
-
-sri <- calculate_sri(met,
-  treatment = "drought_level", control = "control",
-  traits = c("Fv_Fm", "A", "RWC", "shoot_biomass"),
-  by = c("genotype", "site"), verbose = FALSE
+sri <- calculate_sri(wheat_salinity,
+  treatment = "salinity", control = "control",
+  traits = c("Fv_Fm", "A", "RWC", "Na", "K", "MDA", "grain_yield"),
+  by = c("cultivar", "site"), block = "block", verbose = FALSE
 )
 
-stress_stability(integrated_stress_index(sri))
+stab <- stress_stability(integrated_stress_index(sri))
+stab
+
+# W4 is the cultivar whose ranking does not travel: near the top upland,
+# near the bottom on the coast.
+stab[stab$unit == "W4", ]
 }
 \references{
 Wricke G. (1962). Uber eine Methode zur Erfassung der okologischen Streubreite

@@ -14,6 +14,8 @@ if (!requireNamespace("plantstressR", quietly = TRUE)) {
 
 NONE <- "— none —"
 
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
 app_theme <- function() {
   if (requireNamespace("bslib", quietly = TRUE)) {
     bslib::bs_theme(version = 5, primary = "#2C7BB6", base_font = "system-ui")
@@ -43,6 +45,18 @@ ui <- fluidPage(
         "source", NULL,
         choices = c("Example trial" = "example", "Upload a CSV" = "upload"),
         selected = "example"
+      ),
+      conditionalPanel(
+        "input.source == 'example'",
+        selectInput(
+          "example", NULL,
+          choices = c(
+            "Brachiaria drought (blocks)" = "brachiaria_stress",
+            "Wheat salinity (three sites)" = "wheat_salinity",
+            "Maize heat (small and messy)" = "maize_heat"
+          ),
+          selected = "brachiaria_stress"
+        )
       ),
       conditionalPanel(
         "input.source == 'upload'",
@@ -233,7 +247,10 @@ server <- function(input, output, session) {
 
   dataset <- reactive({
     if (identical(input$source, "example")) {
-      return(plantstressR::simulate_brachiaria_stress())
+      which <- input$example %||% "brachiaria_stress"
+      env <- new.env(parent = emptyenv())
+      utils::data(list = which, package = "plantstressR", envir = env)
+      return(get(which, envir = env))
     }
     file <- input$file
     validate(need(file, "Choose a CSV file to begin."))

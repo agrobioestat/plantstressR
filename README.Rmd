@@ -30,6 +30,16 @@ puts every trait on a common signed scale, integrates them into a single
 rankable index, draws the signature, and maps the network of traits that
 respond together.
 
+## Data to try it on
+
+| Data set | What it is for |
+|---|---|
+| `brachiaria_stress` | Four genotypes, three drought levels, four blocks, 29 traits |
+| `wheat_salinity` | Six cultivars at three sites: the multi-environment case |
+| `maize_heat` | Small and deliberately messy, to see what the design checks say |
+
+All three are simulated, and documented as such.
+
 ## Installation
 
 ```r
@@ -118,26 +128,28 @@ tolerant one. A ranking whose winner sits at `p_best = 0.35` is a ranking you
 should not select on.
 
 For a trial run at more than one site or in more than one year, name both
-columns and ask which genotypes hold their position:
+columns and ask which genotypes hold their position. `wheat_salinity` is six
+cultivars at three sites:
 
 ```{r met}
-met <- brachiaria_stress
-met$site <- ifelse(met$block %in% c("B1", "B2"), "north", "south")
-
-met_sri <- calculate_sri(met,
-  treatment = "drought_level",
+met_sri <- calculate_sri(
+  wheat_salinity,
+  treatment = "salinity",
   control = "control",
-  traits = traits,
-  by = c("genotype", "site"),
+  traits = c("Fv_Fm", "A", "RWC", "Na", "K", "MDA", "grain_yield"),
+  by = c("cultivar", "site"),
+  block = "block",
   verbose = FALSE
 )
 
 stress_stability(integrated_stress_index(met_sri))
 ```
 
-`ecovalence_pct` names the genotypes responsible for the instability of the
-trial: a genotype carrying most of the interaction is one whose ranking does
-not travel.
+`ecovalence_pct` names the cultivars responsible for the instability of the
+trial. `W2` holds a narrow band of ranks wherever it is grown. `W4` runs from
+rank 2 to rank 17 depending on the site — a cultivar you cannot select on from
+a single trial, and one you would have called excellent had you only visited
+the upland site.
 
 Draw the signature:
 

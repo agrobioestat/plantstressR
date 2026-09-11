@@ -38,6 +38,14 @@ data(brachiaria_stress)
 str(brachiaria_stress[, 1:8])
 ```
 
+Three trials ship with the package, all simulated and documented as such:
+
+| Data set | What it is for |
+|---|---|
+| `brachiaria_stress` | Four genotypes, three drought levels, four blocks, 29 traits |
+| `wheat_salinity` | Six cultivars at three sites, for the multi-environment functions |
+| `maize_heat` | Small and deliberately messy, to see what the design checks say |
+
 The input contract is deliberately small:
 
 | Column kind | Requirement |
@@ -270,21 +278,30 @@ Name both columns in `by`. Each genotype is then indexed at each site against
 the control of that site, which is the right comparison — a drought treatment
 in a dry year is not the same treatment as in a wet one:
 
-```{r met}
-met <- brachiaria_stress
-met$site <- ifelse(met$block %in% c("B1", "B2"), "north", "south")
+The package ships such a trial: `wheat_salinity`, six cultivars grown at three
+sites under sodium chloride, in complete blocks within each site.
 
-met_sri <- calculate_sri(met,
-  treatment = "drought_level",
+```{r met}
+data(wheat_salinity)
+
+met_sri <- calculate_sri(
+  wheat_salinity,
+  treatment = "salinity",
   control = "control",
-  traits = traits,
-  by = c("genotype", "site"),
+  traits = c("Fv_Fm", "A", "RWC", "Na", "K", "MDA", "grain_yield"),
+  by = c("cultivar", "site"),
+  block = "block",
   verbose = FALSE
 )
 
 stability <- stress_stability(integrated_stress_index(met_sri))
 stability
 ```
+
+Note that nothing had to be said about `Na` or `K`. Sodium accumulating is
+damage and potassium falling is damage, and `trait_directions()` resolves both
+from its dictionary — which is the bookkeeping this package exists to keep
+straight.
 
 Three columns carry the message. `sd_isi` is how much a genotype's index moved
 between sites. `rank_min` and `rank_max` are the best and worst positions it

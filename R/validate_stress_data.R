@@ -37,15 +37,26 @@
 #' @seealso [calculate_sri()]
 #'
 #' @examples
+#' # A clean trial: nothing to report.
 #' data(brachiaria_stress)
-#' chk <- validate_stress_data(
+#' validate_stress_data(
 #'   brachiaria_stress,
 #'   treatment = "drought_level",
 #'   control = "control",
 #'   traits = c("Fv_Fm", "A", "RWC", "shoot_biomass"),
 #'   by = "genotype"
 #' )
-#' chk
+#'
+#' # A trial with the usual problems: thin replication in one cell, a trait
+#' # abandoned partway through, and a constant column that is not a trait.
+#' data(maize_heat)
+#' validate_stress_data(
+#'   maize_heat,
+#'   treatment = "treatment",
+#'   control = "control",
+#'   by = "hybrid",
+#'   verbose = FALSE
+#' )
 #' @export
 validate_stress_data <- function(data,
                                  treatment,

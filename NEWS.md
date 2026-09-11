@@ -1,3 +1,43 @@
+# plantstressR 0.7.0
+
+Two more trials to work on, so that every part of the package can be tried
+without bringing your own data first.
+
+## New data
+
+* `wheat_salinity`: six cultivars grown at three sites under sodium chloride,
+  in complete blocks within each site, 162 plots and 14 traits. This is the
+  data set the multi-environment functions were written for. It carries a real
+  genotype-by-environment structure -- `W2` holds a narrow band of ranks
+  everywhere, `W4` runs from near the top on the upland site to near the bottom
+  on the coastal one -- so `stress_stability()` has something to report. Its
+  ion-relation traits (`Na`, `Cl`, `K`) also exercise the direction dictionary,
+  which resolves rising sodium and falling potassium as damage without being
+  told.
+* `maize_heat`: 38 plants, four hybrids, one heat treatment, and every common
+  defect on purpose -- a cell with two control plants, a trait abandoned
+  partway through the campaign at 37 per cent missing, and a constant column
+  that is numeric but is not a trait. Until now every bundled trial was clean,
+  which left `validate_stress_data()` with nothing to report and users with no
+  idea what its warnings look like.
+
+Both are simulated and documented as such, and the scripts that build them are
+in `data-raw/` in the package repository.
+
+## Documentation
+
+* The multi-environment example in the README and the vignette used to
+  manufacture two sites by splitting the blocks of the drought trial, which
+  confounded site with block. It now uses `wheat_salinity`, where the sites are
+  sites.
+* `validate_stress_data()` gains a second example, on a trial that actually
+  fails its checks.
+* The dashboard lets you pick which of the three trials to load.
+
+## Bug fixes
+
+* The manual claimed `maize_heat` had 11 columns. It has 12.
+
 # plantstressR 0.6.0
 
 Found by an adversarial re-read of the code added in 0.3.0-0.5.0, prompted by
@@ -11,8 +51,8 @@ conclusion.
   variance under stress is one of the things Glass's delta exists to cope with
   -- and the assumption contradicted the Welch test already used for
   `p_value`. The numerator variance is now taken from the data,
-  \eqn{\sqrt{s_c^2/n_c + s_s^2/n_s}}, which reduces **exactly** to the former
-  \eqn{\sqrt{(n_c + n_s)/(n_c n_s)}} when the two spreads agree, so balanced
+  `sqrt(s_c^2 / n_c + s_s^2 / n_s)`, which reduces **exactly** to the former
+  `sqrt((n_c + n_s) / (n_c * n_s))` when the two spreads agree, so balanced
   homoscedastic trials are unaffected.
 * That assumption also made `weights = "precision"` behave differently
   depending on whether `block` had been supplied: the blocked path noticed
