@@ -1,0 +1,22 @@
+citHeader("To cite plantstressR in publications, please use:")
+
+## `meta` is supplied by R from the installed DESCRIPTION. The fallbacks keep
+## the file working when the package is loaded from source, and avoid `%||%`,
+## which is only available in base R from 4.4.0 onwards.
+version <- if (!is.null(meta$Version)) meta$Version else "development version"
+year <- if (!is.null(meta$Date)) sub("-.*", "", meta$Date) else format(Sys.Date(), "%Y")
+
+bibentry(
+  bibtype  = "Manual",
+  title    = "{plantstressR}: Multivariate Phenotyping of Plant Stress Response Signatures",
+  author   = c(person(given = "Joao Everthon da Silva", family = "Ribeiro")),
+  year     = year,
+  note     = paste("R package version", version),
+  url      = "https://github.com/agrobioestat/plantstressR",
+  textVersion = paste0(
+    "Ribeiro, J.E.S. (", year, "). ",
+    "plantstressR: Multivariate Phenotyping of Plant Stress Response Signatures. ",
+    "R package version ", version, ". ",
+    "https://github.com/agrobioestat/plantstressR"
+  )
+)

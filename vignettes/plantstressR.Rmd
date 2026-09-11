@@ -1,0 +1,281 @@
+---
+title: "Multivariate phenotyping of plant stress with plantstressR"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Multivariate phenotyping of plant stress with plantstressR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4.5,
+  dpi = 96
+)
+```
+
+## The question this package answers
+
+A stress phenotyping trial produces a wide table: dozens of physiological
+traits, measured on the same plants, under a control treatment and one or more
+stress treatments. The analytical question is almost always the same one:
+
+> **What is the physiological stress signature of this material, and how do the
+> traits interact?**
+
+`plantstressR` answers exactly that question and nothing else. It does not
+classify, predict or integrate omics layers. It takes one tidy table and returns
+four things: a signed index per trait, one integrated index per genotype, a
+picture of the signature, and the network of traits that respond together.
+
+```{r load}
+library(plantstressR)
+
+data(brachiaria_stress)
+str(brachiaria_stress[, 1:8])
+```
+
+The input contract is deliberately small:
+
+| Column kind | Requirement |
+|---|---|
+| Treatment | One column, one level flagged as the control |
+| Grouping (optional) | One column, typically genotype; every level needs its own control |
+| Traits | Numeric columns, any units, any number |
+
+Everything else in the table is ignored.
+
+## Step 1 — validate the design before computing anything
+
+`validate_stress_data()` is the gate. It fails loudly on problems that make the
+indices meaningless (an unknown control level, a genotype without controls, a
+fully missing trait) and warns about problems that only make them fragile (low
+replication, constant traits, heavy missingness).
+
+```{r validate}
+traits <- c(
+  "Fv_Fm", "PIabs", "DI0_RC", "A", "gs", "Ci",
+  "RWC", "SPAD", "shoot_biomass"
+)
+
+validate_stress_data(
+  brachiaria_stress,
+  treatment = "drought_level",
+  control = "control",
+  traits = traits,
+  by = "genotype"
+)
+```
+
+## Step 2 — one signed index per trait
+
+`calculate_sri()` converts each trait into a **Stress Response Index**: the
+standardized difference between a stress treatment and its own control,
+re-signed so that a positive value always means *the stress impaired this
+trait*.
+
+Sign handling is the part that is easy to get wrong by hand. `Fv/Fm` falling and
+`DI0/RC` rising both mean damage; averaging them raw would cancel real
+information. `trait_directions()` resolves the orientation, using a small
+dictionary of well-known physiological traits and falling back to
+"higher is better".
+
+```{r directions}
+trait_directions(traits)
+```
+
+```{r sri}
+sri <- calculate_sri(
+  brachiaria_stress,
+  treatment = "drought_level",
+  control = "control",
+  traits = traits,
+  by = "genotype",
+  method = "glass"
+)
+
+summary(sri)
+```
+
+Choosing `method`:
+
+| `method` | Scale | Use it when |
+|---|---|---|
+| `"glass"` | SD of the control | Default. The stress treatment inflates variance and you do not want that to shrink the index |
+| `"cohen"` | Pooled SD | Both groups have comparable dispersion |
+| `"hedges"` | Pooled SD, bias corrected | Few replicates per plot |
+| `"relative"` | Control mean | You want a percentage change, on ratio-scale traits only |
+
+## Step 3 — see the signature
+
+```{r heatmap, fig.height = 5}
+plot_stress_signature(sri, units = "G1")
+```
+
+Rows are ordered by hierarchical clustering of their index profiles, so traits
+that respond alike sit next to each other. Stars mark adjusted p-values.
+
+For a small, curated panel in a manuscript figure, the radar view reads better:
+
+```{r radar, fig.height = 5}
+plot_stress_signature(sri, type = "radar", units = "G1", top_n = 6)
+```
+
+## Step 4 — one number per genotype, and a ranking
+
+`integrated_stress_index()` collapses the per-trait indices into a single
+weighted score per genotype and stress level. Because the trait indices are
+already dimensionless and consistently signed, the weighted mean is a
+meaningful severity score.
+
+```{r isi}
+isi <- integrated_stress_index(sri, weights = "precision")
+isi
+```
+
+Ranks and the `0-100` rescaling are computed **within** each stress level:
+moderate and severe deficit are different environments, and mixing them in one
+ranking would compare genotypes across environments they did not share.
+
+The weights and the per-trait contributions are recoverable, which is what makes
+a ranking defensible in a paper:
+
+```{r weights}
+stress_weights(isi)
+
+head(stress_contributions(isi), 5)
+```
+
+Choosing `weights`:
+
+| `weights` | Meaning |
+|---|---|
+| `"equal"` | Every trait counts the same; use with an a priori trait panel |
+| `"precision"` | Noisy, poorly replicated traits are down-weighted |
+| `"pca"` | Traits carrying the dominant axis of stress variation weigh more |
+| named vector | Expert weights, rescaled to sum to one |
+
+`plot()` gives the two figures that belong together: the ranking, and the
+decomposition that justifies it.
+
+```{r isi-plot, fig.height = 3.6}
+plot(isi)
+```
+
+```{r isi-contribution, fig.height = 3.6}
+plot(isi, type = "contribution")
+```
+
+## Step 5 — how the traits interact
+
+A signature says *what* changed. The network says *what changed together*.
+`stress_network()` estimates partial correlations, so each edge is the
+association between two traits after removing every other trait in the panel;
+the dense webs of indirect correlation that make raw correlation networks
+unreadable simply disappear.
+
+```{r network}
+net <- stress_network(
+  brachiaria_stress,
+  traits = traits,
+  treatment = "drought_level",
+  level = c("moderate", "severe"),
+  sri = sri
+)
+
+net
+```
+
+```{r network-plot, fig.height = 5}
+plot(net, color_by = "sri")
+```
+
+Modules become interpretable once they are scored with the trait indices.
+`stress_module_scores()` turns a nine-trait signature into three sentences:
+
+```{r module-scores}
+stress_module_scores(net, sri)
+```
+
+Two modeling choices matter here:
+
+* **Which plants.** A network estimated on stressed plants only describes the
+  stressed physiology. Estimated on the whole trial, it mostly recovers the
+  treatment contrast.
+* **Regularization.** The correlation matrix is shrunk towards the identity
+  before inversion. `lambda = "auto"` picks the smallest intensity that yields a
+  well-conditioned matrix, which keeps the estimate usable when the number of
+  traits approaches the number of plots.
+
+## Step 6 — the sample-level view
+
+`calculate_sri()` summarizes treatments and `stress_network()` summarizes
+traits. When the individual plants themselves are the object of interest,
+`stress_ordination()` places them in the trait space.
+
+```{r ordination, fig.height = 5}
+ord <- stress_ordination(
+  brachiaria_stress,
+  treatment = "drought_level",
+  traits = traits
+)
+
+ord
+plot(ord)
+```
+
+## Step 7 — the agronomic cross-check
+
+A physiological ranking is more convincing when it agrees with the classical
+selection indices, and more interesting when it does not.
+`stress_tolerance_index()` computes them from a single productivity trait.
+
+```{r sti}
+sti <- stress_tolerance_index(
+  brachiaria_stress,
+  trait = "shoot_biomass",
+  treatment = "drought_level",
+  control = "control",
+  by = "genotype",
+  indices = c("STI", "GMP", "SSI", "TOL", "YSI")
+)
+
+sti
+```
+
+No single index is right on its own. `TOL` and `SSI` reward stability even when
+it comes with low potential; `MP` and `GMP` reward potential even when the loss
+is large. `rank_mean` averages the ranks after orienting every index towards
+tolerance, and `rank_overall` ranks the genotypes on that average.
+
+Comparing the two rankings is the point:
+
+```{r cross-check}
+merge(
+  isi[isi$group == "severe", c("unit", "isi", "rank")],
+  sti[sti$group == "severe", c("unit", "STI", "rank_overall")],
+  by = "unit"
+)
+```
+
+## The whole workflow
+
+```{r workflow, eval = FALSE}
+sri <- calculate_sri(data, treatment = "trt", control = "ctrl", by = "genotype")
+isi <- integrated_stress_index(sri, weights = "precision")
+net <- stress_network(data, treatment = "trt", level = "stress", sri = sri)
+
+plot(sri)                          # the signature
+plot(isi)                          # the ranking
+plot(net)                          # the interactions
+stress_module_scores(net, sri)     # the modules, scored
+```
+
+One table in, four answers out.
+
+```{r session}
+sessionInfo()
+```

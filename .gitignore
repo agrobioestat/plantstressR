@@ -1,0 +1,26 @@
+# RStudio / R session
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+.positai
+.claude/
+
+# Bibliotecas e checks locais
+.r_libs/
+check_lib/
+*.Rcheck/
+..Rcheck/
+plantstressR-Ex.R
+plantstressR-Ex.Rout
+
+# Builds
+*.tar.gz
+
+# Rascunhos / testes manuais
+_legacy/
+plantstressR_open_test/
+
+# SO
+.DS_Store
+Thumbs.db

@@ -1,0 +1,138 @@
+---
+output: github_document
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%",
+  dpi = 96
+)
+```
+
+# plantstressR
+
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/agrobioestat/plantstressR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/agrobioestat/plantstressR/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
+
+`plantstressR` answers one question:
+
+> **What is the physiological stress signature of a plant, and how do its traits
+> interact?**
+
+You bring one tidy table of physiological traits measured under a control
+treatment and one or more stress treatments. The package does the rest: it
+puts every trait on a common signed scale, integrates them into a single
+rankable index, draws the signature, and maps the network of traits that
+respond together.
+
+## Installation
+
+```r
+# install.packages("remotes")
+remotes::install_github("agrobioestat/plantstressR")
+```
+
+## The workflow
+
+| Function | What it gives you |
+|---|---|
+| `validate_stress_data()` | Design checks before anything is computed |
+| `calculate_sri()` | A signed, standardized Stress Response Index per trait |
+| `integrated_stress_index()` | One weighted index per genotype, plus a ranking |
+| `plot_stress_signature()` | The signature as a heat map or a radar plot |
+| `stress_network()` | A regularized partial-correlation network with trait modules |
+| `stress_module_scores()` | The modules scored with the trait indices |
+| `stress_tolerance_index()` | The classical selection indices (`STI`, `SSI`, `GMP`, `TOL`, ...) |
+| `stress_ordination()` | The sample-level view of the trait space |
+
+## Example
+
+```{r example}
+library(plantstressR)
+
+traits <- c("Fv_Fm", "PIabs", "DI0_RC", "A", "gs", "Ci", "RWC", "SPAD", "shoot_biomass")
+
+sri <- calculate_sri(
+  brachiaria_stress,
+  treatment = "drought_level",
+  control = "control",
+  traits = traits,
+  by = "genotype",
+  verbose = FALSE
+)
+
+summary(sri)
+```
+
+Positive values always mean *stress impaired this trait*, whichever direction
+the trait moves. `Fv/Fm` falling and `DI0/RC` rising are both damage, and
+`trait_directions()` keeps that bookkeeping straight.
+
+Rank the genotypes:
+
+```{r isi}
+integrated_stress_index(sri, weights = "precision")
+```
+
+Draw the signature:
+
+```{r signature, fig.height = 5}
+plot_stress_signature(sri, units = "G1")
+```
+
+Map how the traits interact:
+
+```{r network}
+net <- stress_network(
+  brachiaria_stress,
+  traits = traits,
+  treatment = "drought_level",
+  level = c("moderate", "severe"),
+  sri = sri
+)
+
+net
+```
+
+```{r network-plot, fig.height = 5}
+plot(net, color_by = "sri")
+```
+
+And score those modules with the signature:
+
+```{r module-scores}
+stress_module_scores(net, sri)
+```
+
+Cross-check against the classical selection indices:
+
+```{r sti}
+stress_tolerance_index(
+  brachiaria_stress,
+  trait = "shoot_biomass",
+  treatment = "drought_level",
+  control = "control",
+  by = "genotype",
+  indices = c("STI", "GMP", "SSI")
+)
+```
+
+## Learn more
+
+```r
+vignette("plantstressR")
+```
+
+## Citation
+
+```r
+citation("plantstressR")
+```
+
+## License
+
+GPL (>= 3)
