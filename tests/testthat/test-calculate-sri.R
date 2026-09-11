@@ -129,3 +129,48 @@ test_that("print and summary methods work", {
   expect_s3_class(s, "tbl_df")
   expect_true(all(c("mean_sri", "most_impaired") %in% names(s)))
 })
+
+test_that("se_sampling reduces to the textbook form under equal variances", {
+  # Two groups built to have exactly the same spread, so the heteroscedastic
+  # expression must collapse onto sqrt((n_c + n_s) / (n_c * n_s)).
+  n <- 15
+  spread <- as.numeric(scale(seq_len(n)))
+  dat <- data.frame(
+    trt = rep(c("ctrl", "stress"), each = n),
+    y = c(10 + spread, 14 + spread)
+  )
+
+  sri <- calculate_sri(dat,
+    treatment = "trt", control = "ctrl", traits = "y",
+    method = "glass", verbose = FALSE
+  )
+  expect_equal(sri$se_sampling, sqrt((n + n) / (n * n)), tolerance = 1e-8)
+})
+
+test_that("se_sampling grows when the stress treatment inflates the variance", {
+  # Same means, same replication; only the dispersion under stress differs. The
+  # index is measured much less precisely in the erratic trait, and the
+  # Welch-style numerator variance is what notices -- the homoscedastic form
+  # would report both as equally precise while `p_value` used a Welch test.
+  set.seed(11)
+  n <- 20
+  dat <- data.frame(
+    trt = rep(c("ctrl", "stress"), each = n),
+    steady = c(stats::rnorm(n, 10, 1), stats::rnorm(n, 14, 1)),
+    erratic = c(stats::rnorm(n, 10, 1), stats::rnorm(n, 14, 6))
+  )
+
+  sri <- calculate_sri(dat,
+    treatment = "trt", control = "ctrl",
+    traits = c("steady", "erratic"), method = "glass", verbose = FALSE
+  )
+  steady <- sri$se_sampling[sri$trait == "steady"]
+  erratic <- sri$se_sampling[sri$trait == "erratic"]
+  expect_gt(erratic, 2 * steady)
+
+  # And precision weighting must act on it.
+  w <- stress_weights(integrated_stress_index(sri,
+    weights = "precision", rescale = FALSE
+  ))
+  expect_gt(w$weight[w$trait == "steady"], w$weight[w$trait == "erratic"])
+})

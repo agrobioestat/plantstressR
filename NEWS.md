@@ -1,3 +1,40 @@
+# plantstressR 0.6.0
+
+Found by an adversarial re-read of the code added in 0.3.0-0.5.0, prompted by
+two earlier defects of the same shape: check-green, plausible number, wrong
+conclusion.
+
+## Bug fixes
+
+* The standard error of a standardized index assumed that the control and the
+  stress group have the same variance. They frequently do not -- an inflated
+  variance under stress is one of the things Glass's delta exists to cope with
+  -- and the assumption contradicted the Welch test already used for
+  `p_value`. The numerator variance is now taken from the data,
+  \eqn{\sqrt{s_c^2/n_c + s_s^2/n_s}}, which reduces **exactly** to the former
+  \eqn{\sqrt{(n_c + n_s)/(n_c n_s)}} when the two spreads agree, so balanced
+  homoscedastic trials are unaffected.
+* That assumption also made `weights = "precision"` behave differently
+  depending on whether `block` had been supplied: the blocked path noticed
+  unequal dispersion and the unblocked path could not. On a two-trait example
+  where the stress treatment inflated one variance sixfold, the unblocked path
+  reported both traits as equally precise; it now gives the erratic one three
+  per cent of the weight. `se` and the confidence limits widen accordingly for
+  traits whose variance the treatment changed.
+
+## Documentation
+
+* The claim that `"precision"` coincides with `"equal"` in any balanced trial
+  was too strong: that holds when the dispersion of the two groups is also
+  comparable. Corrected in the manual and the vignette.
+* `cv_isi` in `stress_stability()` is only interpretable where `mean_isi` is
+  clearly positive, the integrated index being signed. Stated in the manual.
+* The internal note claiming the block adjustment preserves treatment means
+  "exactly" was true only for balanced layouts. Under an unbalanced one the
+  means do move, and should: a treatment over-represented in the better blocks
+  was being flattered by them. The treatment contrast is left at its
+  least-squares value either way, which was verified against `lm()`.
+
 # plantstressR 0.5.1
 
 Fixes found by the Linux job of the continuous integration, which failed while

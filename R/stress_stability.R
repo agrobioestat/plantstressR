@@ -18,6 +18,12 @@
 #' environments. `rank_min`, `rank_max` and `mean_rank` describe the spread of
 #' its position, which is what selection actually acts on.
 #'
+#' Read `cv_isi` only where `mean_isi` is clearly positive. The integrated index
+#' is signed -- a negative value means the genotype did better under stress than
+#' under control -- so a coefficient of variation computed on a quantity that
+#' crosses zero is not interpretable, however finite it looks. It is `NA` when
+#' the mean is indistinguishable from zero.
+#'
 #' `ecovalence` is Wricke's contribution to the genotype-by-environment
 #' interaction,
 #' \deqn{W_i = \sum_j (X_{ij} - \bar{X}_{i.} - \bar{X}_{.j} + \bar{X}_{..})^2,}

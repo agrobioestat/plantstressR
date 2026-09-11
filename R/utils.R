@@ -196,8 +196,11 @@ z_multiplier <- function(conf_level) {
 # Blocks are nuisance strata: they shift a whole replicate up or down without
 # changing what the treatment did. Every block-aware routine in the package
 # removes the same additive, mean-centred block effect estimated from
-# `value ~ treatment + block`, so that treatment means are preserved exactly
-# and only the between-block variance is taken out.
+# `value ~ treatment + block`, which takes the between-block variance out while
+# leaving the treatment contrast at its least-squares value. With a balanced
+# layout the treatment means come through untouched; with an unbalanced one
+# they shift, and that is the point -- a treatment over-represented in the
+# better blocks was being flattered by them.
 
 # Centred block effects, or NULL when the design cannot support the fit.
 block_effects <- function(value, trt, blk) {

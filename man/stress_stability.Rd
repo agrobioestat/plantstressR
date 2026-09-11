@@ -52,6 +52,12 @@ treatment are different environments in themselves and are never pooled.
 environments. \code{rank_min}, \code{rank_max} and \code{mean_rank} describe the spread of
 its position, which is what selection actually acts on.
 
+Read \code{cv_isi} only where \code{mean_isi} is clearly positive. The integrated index
+is signed -- a negative value means the genotype did better under stress than
+under control -- so a coefficient of variation computed on a quantity that
+crosses zero is not interpretable, however finite it looks. It is \code{NA} when
+the mean is indistinguishable from zero.
+
 \code{ecovalence} is Wricke's contribution to the genotype-by-environment
 interaction,
 \deqn{W_i = \sum_j (X_{ij} - \bar{X}_{i.} - \bar{X}_{.j} + \bar{X}_{..})^2,}

@@ -57,7 +57,13 @@ sri_effect <- function(x_control, x_stress, method, conf_level) {
     if (is.finite(denom) && denom > 0) {
       d <- diff / denom
       df_var <- if (method == "glass") n_c - 1 else n_c + n_s - 2
-      se_noise <- sqrt((n_c + n_s) / (n_c * n_s))
+      # Variance of the numerator, taken from the data rather than assumed
+      # equal between the groups. Under homoscedasticity this reduces exactly
+      # to the textbook sqrt((n_c + n_s) / (n_c * n_s)); when the stress
+      # treatment inflates the variance -- which is the situation Glass's
+      # delta exists for -- the textbook form understates the uncertainty,
+      # and it would also contradict the Welch test used for `p_value` below.
+      se_noise <- sqrt(sd_c^2 / n_c + sd_s^2 / n_s) / denom
       se_d <- sqrt(se_noise^2 + d^2 / (2 * df_var))
       if (method == "hedges") {
         # Small-sample bias correction (Hedges' g).

@@ -203,15 +203,18 @@ Choosing `weights`:
 | `"pca"` | Traits carrying the dominant axis of stress variation weigh more |
 | named vector | Expert weights, rescaled to sum to one |
 
-A word on `"precision"`. Once a trait has been standardized, its precision no
-longer depends on how noisy the instrument was — that noise is already in the
-denominator. What remains is replication. So in a balanced trial with no
-missing values `"precision"` gives the same answer as `"equal"`, and it only
-starts to matter when some traits were measured on fewer plants than others,
-which is the usual fate of gas exchange next to SPAD. Weighting by the full
-standard error of the index instead would be a mistake: that quantity grows
-with the effect size itself, so it would quietly demote the very traits that
-responded to the stress.
+A word on `"precision"`. Standardizing a trait has already divided out how
+noisy the instrument is, so with balanced replication and similar dispersion in
+both groups `"precision"` lands on the same answer as `"equal"`. Two things
+make it differ, and both are worth down-weighting: a trait measured on fewer
+plants than the others — the usual fate of gas exchange next to SPAD — and a
+trait whose variance the stress treatment blew up, which is measured much less
+precisely relative to its own scale even when every plant was read.
+
+Weighting by the *full* standard error of the index instead would be a mistake:
+that quantity grows with the effect size itself, so it would quietly demote the
+very traits that responded to the stress. `se_sampling` exists precisely to
+separate the two.
 
 `plot()` gives the two figures that belong together: the ranking, and the
 decomposition that justifies it.
