@@ -1,3 +1,19 @@
+# Shape of a single control-versus-stress comparison. `se` is the full standard
+# error of the effect size (used for confidence limits); `se_sampling` carries
+# only the part that comes from sampling the experimental units, which is what
+# precision weighting must use -- see integrated_stress_index().
+empty_effect <- function(n_c, n_s) {
+  list(
+    n_control = n_c, n_stress = n_s,
+    mean_control = NA_real_, sd_control = NA_real_,
+    mean_stress = NA_real_, sd_stress = NA_real_,
+    difference = NA_real_, effect = NA_real_, se = NA_real_,
+    se_sampling = NA_real_,
+    conf_low = NA_real_, conf_high = NA_real_,
+    statistic = NA_real_, p_value = NA_real_
+  )
+}
+
 # Standardized effect of a stress group relative to its own control group.
 # Returns the *raw* (unoriented) effect; orientation by trait direction is
 # applied by calculate_sri() so that the sign convention lives in one place.
@@ -7,14 +23,7 @@ sri_effect <- function(x_control, x_stress, method, conf_level) {
 
   n_c <- length(x_control)
   n_s <- length(x_stress)
-  empty <- list(
-    n_control = n_c, n_stress = n_s,
-    mean_control = NA_real_, sd_control = NA_real_,
-    mean_stress = NA_real_, sd_stress = NA_real_,
-    difference = NA_real_, effect = NA_real_, se = NA_real_,
-    conf_low = NA_real_, conf_high = NA_real_,
-    statistic = NA_real_, p_value = NA_real_
-  )
+  empty <- empty_effect(n_c, n_s)
   if (n_c < 2L || n_s < 2L) {
     return(empty)
   }
@@ -27,6 +36,7 @@ sri_effect <- function(x_control, x_stress, method, conf_level) {
 
   eff <- NA_real_
   se <- NA_real_
+  se_sampling <- NA_real_
 
   if (method == "relative") {
     if (is.finite(m_c) && abs(m_c) > .Machine$double.eps^0.5) {
@@ -35,6 +45,8 @@ sri_effect <- function(x_control, x_stress, method, conf_level) {
       se_s <- sd_s / sqrt(n_s)
       # Delta method for the ratio of two independent means.
       se <- sqrt(se_s^2 / m_c^2 + (m_s^2 * se_c^2) / m_c^4)
+      # Scale held fixed: only the sampling of the two means contributes.
+      se_sampling <- sqrt(se_s^2 + se_c^2) / abs(m_c)
     }
   } else {
     denom <- switch(method,
@@ -45,15 +57,18 @@ sri_effect <- function(x_control, x_stress, method, conf_level) {
     if (is.finite(denom) && denom > 0) {
       d <- diff / denom
       df_var <- if (method == "glass") n_c - 1 else n_c + n_s - 2
-      se_d <- sqrt((n_c + n_s) / (n_c * n_s) + d^2 / (2 * df_var))
+      se_noise <- sqrt((n_c + n_s) / (n_c * n_s))
+      se_d <- sqrt(se_noise^2 + d^2 / (2 * df_var))
       if (method == "hedges") {
         # Small-sample bias correction (Hedges' g).
         j <- 1 - 3 / (4 * (n_c + n_s) - 9)
         d <- j * d
         se_d <- j * se_d
+        se_noise <- j * se_noise
       }
       eff <- d
       se <- se_d
+      se_sampling <- se_noise
     }
   }
 
@@ -67,9 +82,115 @@ sri_effect <- function(x_control, x_stress, method, conf_level) {
     mean_control = m_c, sd_control = sd_c,
     mean_stress = m_s, sd_stress = sd_s,
     difference = diff, effect = eff, se = se,
+    se_sampling = se_sampling,
     conf_low = eff - z * se, conf_high = eff + z * se,
     statistic = statistic, p_value = p_value
   )
+}
+
+# Same comparison for a blocked design. One additive model per trait and unit
+# serves every stress level, so the residual scale is pooled over the whole
+# trial instead of being re-estimated from each pair of groups.
+sri_effect_blocked <- function(value, trt, blk, control, stress_levels,
+                               method, conf_level) {
+  ok <- !is.na(value) & !is.na(trt) & !is.na(blk)
+  value <- value[ok]
+  trt <- as.character(trt[ok])
+  blk <- as.character(blk[ok])
+
+  res <- stats::setNames(vector("list", length(stress_levels)), stress_levels)
+  for (g in stress_levels) {
+    res[[g]] <- empty_effect(sum(trt == control), sum(trt == g))
+  }
+
+  present <- intersect(c(control, stress_levels), unique(trt))
+  if (!control %in% trt || length(present) < 2L || length(unique(blk)) < 2L) {
+    return(res)
+  }
+
+  keep <- trt %in% present
+  value <- value[keep]
+  f_trt <- stats::relevel(factor(trt[keep]), ref = control)
+  f_blk <- factor(blk[keep])
+
+  fit <- try(stats::lm(value ~ f_trt + f_blk), silent = TRUE)
+  if (inherits(fit, "try-error")) {
+    return(res)
+  }
+  df_res <- stats::df.residual(fit)
+  if (is.na(df_res) || df_res < 1L) {
+    return(res)
+  }
+
+  cf <- stats::coef(fit)
+  vc <- try(stats::vcov(fit), silent = TRUE)
+  if (inherits(vc, "try-error")) {
+    return(res)
+  }
+  s_pooled <- stats::sigma(fit)
+
+  # Adjusted (least-squares) means: the block term is averaged out rather than
+  # read at its reference level.
+  blk_idx <- grep("^f_blk", names(cf))
+  blk_eff <- c(0, cf[blk_idx])
+  blk_eff[!is.finite(blk_eff)] <- 0
+  m_c <- unname(cf[["(Intercept)"]] + mean(blk_eff))
+
+  ctrl_rows <- f_trt == control
+  sd_c <- block_residual_sd(value[ctrl_rows], f_blk[ctrl_rows])
+  z <- z_multiplier(conf_level)
+
+  for (g in stress_levels) {
+    slot <- paste0("f_trt", g)
+    if (!slot %in% names(cf) || !is.finite(cf[[slot]])) next
+
+    diff <- unname(cf[[slot]])
+    se_diff <- sqrt(vc[slot, slot])
+    m_s <- m_c + diff
+    g_rows <- f_trt == g
+    sd_s <- block_residual_sd(value[g_rows], f_blk[g_rows])
+
+    eff <- NA_real_
+    se <- NA_real_
+    se_sampling <- NA_real_
+
+    if (method == "relative") {
+      if (is.finite(m_c) && abs(m_c) > .Machine$double.eps^0.5) {
+        eff <- diff / abs(m_c)
+        se <- se_diff / abs(m_c)
+        se_sampling <- se
+      }
+    } else {
+      denom <- if (method == "glass") sd_c else s_pooled
+      if (is.finite(denom) && denom > 0) {
+        d <- diff / denom
+        se_noise <- se_diff / denom
+        se_d <- sqrt(se_noise^2 + d^2 / (2 * df_res))
+        if (method == "hedges") {
+          j <- 1 - 3 / (4 * df_res - 1)
+          d <- j * d
+          se_d <- j * se_d
+          se_noise <- j * se_noise
+        }
+        eff <- d
+        se <- se_d
+        se_sampling <- se_noise
+      }
+    }
+
+    statistic <- diff / se_diff
+    res[[g]] <- list(
+      n_control = sum(ctrl_rows), n_stress = sum(g_rows),
+      mean_control = m_c, sd_control = sd_c,
+      mean_stress = m_s, sd_stress = sd_s,
+      difference = diff, effect = eff, se = se,
+      se_sampling = se_sampling,
+      conf_low = eff - z * se, conf_high = eff + z * se,
+      statistic = statistic,
+      p_value = 2 * stats::pt(-abs(statistic), df = df_res)
+    )
+  }
+  res
 }
 
 #' Stress Response Index (SRI) per Trait
@@ -119,6 +240,14 @@ sri_effect <- function(x_control, x_stress, method, conf_level) {
 #'   column that is not a design column.
 #' @param by Optional grouping column (typically genotype). Indices are computed
 #'   within each level, against that level's own control.
+#' @param block Optional name of a block (replicate) column. When supplied, the
+#'   index is estimated from an additive `trait ~ treatment + block` model
+#'   within each unit, so that a replicate which happened to sit in a wetter
+#'   corner of the glasshouse shifts neither the difference nor the scale. The
+#'   scaling standard deviation becomes the residual (within-block) one, the
+#'   test is the model's t-test on the treatment contrast, and the whole trial
+#'   contributes to the residual degrees of freedom instead of each pair of
+#'   groups separately. Leave `NULL` for a completely randomized design.
 #' @param direction How each trait responds to stress. Either `"auto"` (the
 #'   default, resolved by [trait_directions()]), a single string applied to all
 #'   traits, or a named vector of `"higher_is_better"` / `"lower_is_better"`
@@ -133,8 +262,15 @@ sri_effect <- function(x_control, x_stress, method, conf_level) {
 #'   unit, stress level and trait, and columns `unit`, `group`, `trait`,
 #'   `direction`, `n_control`, `n_stress`, `mean_control`, `sd_control`,
 #'   `mean_stress`, `sd_stress`, `difference`, `effect`, `sri`, `se`,
-#'   `conf_low`, `conf_high`, `statistic`, `p_value` and `p_adj`. `unit` is
-#'   `"overall"` when `by` is `NULL`.
+#'   `se_sampling`, `conf_low`, `conf_high`, `statistic`, `p_value` and
+#'   `p_adj`. `unit` is `"overall"` when `by` is `NULL`.
+#'
+#'   `se` is the full standard error of the index and is what the confidence
+#'   limits use. `se_sampling` holds only the component due to sampling the
+#'   experimental units, with the scaling standard deviation treated as fixed;
+#'   it is the quantity [integrated_stress_index()] uses for precision
+#'   weighting, because the full `se` grows with the effect itself and would
+#'   otherwise penalise exactly the traits that responded to the stress.
 #'
 #' @references
 #' Fischer R.A., Maurer R. (1978). Drought resistance in spring wheat cultivars.
@@ -174,6 +310,7 @@ calculate_sri <- function(data,
                           control,
                           traits = NULL,
                           by = NULL,
+                          block = NULL,
                           direction = "auto",
                           method = c("glass", "cohen", "hedges", "relative"),
                           conf_level = 0.95,
@@ -189,6 +326,7 @@ calculate_sri <- function(data,
     control = control,
     traits = traits,
     by = by,
+    block = block,
     verbose = verbose
   )
 
@@ -201,44 +339,71 @@ calculate_sri <- function(data,
   trt <- as.character(data[[treatment]])
   unit <- if (is.null(by)) rep("overall", nrow(data)) else as.character(data[[by]])
   units <- unique(stats::na.omit(unit))
+  blk <- if (is.null(block)) NULL else as.character(data[[block]])
+
+  # One row of the output table, with the sign convention applied once.
+  build_row <- function(u, g, tr, st) {
+    s <- ori[[tr]]
+    lo <- st$conf_low
+    hi <- st$conf_high
+    tibble::tibble(
+      unit = u,
+      group = g,
+      trait = tr,
+      direction = unname(direction[[tr]]),
+      n_control = st$n_control,
+      n_stress = st$n_stress,
+      mean_control = st$mean_control,
+      sd_control = st$sd_control,
+      mean_stress = st$mean_stress,
+      sd_stress = st$sd_stress,
+      difference = st$difference,
+      effect = st$effect,
+      sri = s * st$effect,
+      se = st$se,
+      se_sampling = st$se_sampling,
+      conf_low = if (s > 0) lo else -hi,
+      conf_high = if (s > 0) hi else -lo,
+      statistic = st$statistic,
+      p_value = st$p_value
+    )
+  }
 
   rows <- list()
   for (u in units) {
     in_unit <- !is.na(unit) & unit == u
-    ctrl_rows <- in_unit & !is.na(trt) & trt == control
-    for (g in stress_levels) {
-      stress_rows <- in_unit & !is.na(trt) & trt == g
-      if (!any(stress_rows)) next
+
+    if (is.null(blk)) {
+      ctrl_rows <- in_unit & !is.na(trt) & trt == control
+      for (g in stress_levels) {
+        stress_rows <- in_unit & !is.na(trt) & trt == g
+        if (!any(stress_rows)) next
+        for (tr in traits) {
+          st <- sri_effect(
+            x_control = data[[tr]][ctrl_rows],
+            x_stress = data[[tr]][stress_rows],
+            method = method,
+            conf_level = conf_level
+          )
+          rows[[length(rows) + 1L]] <- build_row(u, g, tr, st)
+        }
+      }
+    } else {
+      levels_here <- intersect(stress_levels, unique(trt[in_unit]))
+      if (length(levels_here) == 0L) next
       for (tr in traits) {
-        st <- sri_effect(
-          x_control = data[[tr]][ctrl_rows],
-          x_stress = data[[tr]][stress_rows],
+        fits <- sri_effect_blocked(
+          value = data[[tr]][in_unit],
+          trt = trt[in_unit],
+          blk = blk[in_unit],
+          control = control,
+          stress_levels = levels_here,
           method = method,
           conf_level = conf_level
         )
-        s <- ori[[tr]]
-        lo <- st$conf_low
-        hi <- st$conf_high
-        rows[[length(rows) + 1L]] <- tibble::tibble(
-          unit = u,
-          group = g,
-          trait = tr,
-          direction = unname(direction[[tr]]),
-          n_control = st$n_control,
-          n_stress = st$n_stress,
-          mean_control = st$mean_control,
-          sd_control = st$sd_control,
-          mean_stress = st$mean_stress,
-          sd_stress = st$sd_stress,
-          difference = st$difference,
-          effect = st$effect,
-          sri = s * st$effect,
-          se = st$se,
-          conf_low = if (s > 0) lo else -hi,
-          conf_high = if (s > 0) hi else -lo,
-          statistic = st$statistic,
-          p_value = st$p_value
-        )
+        for (g in levels_here) {
+          rows[[length(rows) + 1L]] <- build_row(u, g, tr, fits[[g]])
+        }
       }
     }
   }
@@ -262,6 +427,7 @@ calculate_sri <- function(data,
       treatment = treatment,
       control = control,
       by = by,
+      block = block,
       traits = traits,
       direction = direction,
       method = method,

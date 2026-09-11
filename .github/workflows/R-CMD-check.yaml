@@ -30,6 +30,10 @@ jobs:
         with:
           r-version: ${{ matrix.config.r }}
 
+      # The README and the vignette are rendered through pandoc; without it the
+      # check only reports a NOTE and silently skips them.
+      - uses: r-lib/actions/setup-pandoc@v2
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck

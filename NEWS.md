@@ -1,3 +1,52 @@
+# plantstressR 0.3.0
+
+Designs with blocks, an interactive dashboard, and a correction to precision
+weighting that changes published rankings.
+
+## New features
+
+* All of `calculate_sri()`, `stress_network()`, `stress_ordination()` and
+  `validate_stress_data()` gain a `block` argument. Trait values are cleared of
+  their additive block effect through a `trait ~ treatment + block` model, so a
+  bench, strip or run that sat slightly better than the others no longer
+  inflates the residual scale. The blocked path estimates one model per trait
+  and unit, pools the residual variance over the whole trial, and reports the
+  model's own t-test and degrees of freedom.
+* `validate_stress_data()` checks the block layout: too few block levels, a
+  treatment confined to a single block (which cannot be separated from it), and
+  empty treatment-by-block cells.
+* `run_plantstress_app()` returns, rewritten against the current API. The
+  dashboard covers the whole workflow -- design checks, signature, ranking,
+  network, ordination and tolerance indices -- with CSV upload and download.
+  `shiny` is an optional dependency in `Suggests`; the app lives in
+  `inst/shiny` and calls nothing but exported functions, and a test enforces
+  that so it cannot drift out of step with the package again.
+* `calculate_sri()` returns a new `se_sampling` column, the part of the
+  standard error that comes from sampling the experimental units, with the
+  scaling standard deviation treated as fixed.
+
+## Bug fixes
+
+* `integrated_stress_index(weights = "precision")` no longer penalises the
+  traits that responded to the stress. The full standard error of a
+  standardized effect contains a `d^2` term, so weighting by `1/se^2` demoted
+  precisely the traits carrying the signal: on the bundled example the weight
+  was correlated `-0.92` with the size of the response, and the least affected
+  trait took 42 per cent of the total weight. Weighting now uses
+  `se_sampling`. **Rankings produced with `weights = "precision"` before this
+  release should be recomputed.** Note that once effects are standardized,
+  precision depends only on replication, so in a balanced trial with no missing
+  data this scheme now coincides with `"equal"`.
+* `simulate_brachiaria_stress()` no longer leaves a stray `names` attribute on
+  29 of the trait columns, inherited from the genotype vector used to build the
+  genotype effects.
+
+## Data
+
+* `brachiaria_stress` gains a `block` column with four complete blocks, and
+  every trait carries an additive block shift, so the block machinery can be
+  demonstrated and tested on the bundled data.
+
 # plantstressR 0.2.0
 
 Scope pivot. The package now answers a single question -- what is the

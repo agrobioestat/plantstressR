@@ -11,6 +11,7 @@ validate_stress_data(
   control,
   traits = NULL,
   by = NULL,
+  block = NULL,
   min_replicates = 3L,
   max_missing = 0.2,
   verbose = TRUE
@@ -32,6 +33,11 @@ column that is not a design column.}
 site). When supplied, every level must contain both control and stress
 observations.}
 
+\item{block}{Optional name of a block (replicate) column. When supplied, the
+design is additionally checked for enough block levels, for treatments
+confined to a single block (which cannot be separated from it) and for
+empty treatment-by-block cells.}
+
 \item{min_replicates}{Minimum number of observations expected per design
 cell. Cells below this threshold are flagged.}
 
@@ -47,7 +53,7 @@ cell. Cells below this threshold are flagged.}
 Invisibly, an object of class \code{"plantstress_validation"}: a list with
 \code{ok}, \code{issues} (a tibble with columns \code{severity}, \code{check} and \code{message}),
 \code{design} (replication per design cell), \code{traits}, \code{treatment}, \code{control},
-\code{stress_levels} and \code{by}.
+\code{stress_levels}, \code{by} and \code{block}.
 }
 \description{
 Runs the design checks that every other \code{plantstressR} function relies on,

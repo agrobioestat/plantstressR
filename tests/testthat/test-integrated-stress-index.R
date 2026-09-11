@@ -85,3 +85,49 @@ test_that("invalid input is rejected", {
 test_that("print method works", {
   expect_output(print(integrated_stress_index(sri_fixture())), "plantstress_isi")
 })
+
+test_that("precision weighting does not punish traits for responding", {
+  # Two traits measured on the same plants with the same replication, one
+  # hammered by the stress and one barely touched. Standardized precision is a
+  # property of the design, so neither may be favoured over the other.
+  n <- 10
+  dat <- data.frame(
+    trt = rep(c("ctrl", "stress"), each = n),
+    strong = c(seq(10, 11, length.out = n), seq(30, 31, length.out = n)),
+    weak = c(seq(10, 11, length.out = n), seq(11, 12, length.out = n))
+  )
+
+  sri <- calculate_sri(dat,
+    treatment = "trt", control = "ctrl",
+    traits = c("strong", "weak"), verbose = FALSE
+  )
+  expect_gt(
+    abs(sri$sri[sri$trait == "strong"]),
+    abs(sri$sri[sri$trait == "weak"])
+  )
+
+  w <- stress_weights(integrated_stress_index(sri, weights = "precision", rescale = FALSE))
+  expect_equal(w$weight[w$trait == "strong"], w$weight[w$trait == "weak"],
+    tolerance = 1e-8
+  )
+})
+
+test_that("precision weighting still follows replication", {
+  # Same effect on both traits, but one is measured on half the plants.
+  n <- 12
+  dat <- data.frame(
+    trt = rep(c("ctrl", "stress"), each = n),
+    full = c(seq(10, 11, length.out = n), seq(14, 15, length.out = n)),
+    sparse = c(seq(10, 11, length.out = n), seq(14, 15, length.out = n))
+  )
+  dat$sparse[c(1:3, (n + 1):(n + 3))] <- NA_real_
+
+  w <- stress_weights(integrated_stress_index(
+    calculate_sri(dat,
+      treatment = "trt", control = "ctrl",
+      traits = c("full", "sparse"), verbose = FALSE
+    ),
+    weights = "precision", rescale = FALSE
+  ))
+  expect_gt(w$weight[w$trait == "full"], w$weight[w$trait == "sparse"])
+})

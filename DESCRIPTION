@@ -1,6 +1,6 @@
 Package: plantstressR
 Title: Multivariate Phenotyping of Plant Stress Response Signatures
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: 
     person(given = "Joao Everthon da Silva",
            family = "Ribeiro",
@@ -16,11 +16,13 @@ Description: Quantifies the physiological signature of abiotic stress in plants
     whose modules reveal traits that respond jointly to stress. The
     standardized-difference formulation of the trait index follows the
     stress-tolerance selection framework of Fischer and Maurer (1978)
-    <doi:10.1071/AR9780897>, the network layer follows the regularized
-    partial-correlation approach reviewed by Epskamp and Fried (2018)
-    <doi:10.1037/met0000167>, and trait modules are detected with the
-    multi-level modularity algorithm of Blondel and others (2008)
-    <doi:10.1088/1742-5468/2008/10/P10008>.
+    <doi:10.1071/AR9780897>, the network layer estimates shrinkage-regularized
+    partial correlations within the partial-correlation network framework
+    reviewed by Epskamp and Fried (2018) <doi:10.1037/met0000167>, and trait
+    modules are detected with the multi-level modularity algorithm of Blondel
+    and others (2008) <doi:10.1088/1742-5468/2008/10/P10008>. Randomized
+    complete block designs are supported throughout, and an optional 'shiny'
+    dashboard runs the whole workflow without writing code.
 License: GPL (>= 3)
 URL: https://github.com/agrobioestat/plantstressR
 BugReports: https://github.com/agrobioestat/plantstressR/issues
@@ -36,10 +38,12 @@ Imports:
     stats,
     tibble,
     utils
-Suggests: 
+Suggests:
+    bslib,
     FactoMineR,
     knitr,
     rmarkdown,
+    shiny,
     spelling,
     testthat (>= 3.0.0)
 VignetteBuilder: knitr

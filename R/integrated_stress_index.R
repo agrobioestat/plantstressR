@@ -23,10 +23,14 @@ sri_weights <- function(x, weights) {
     w <- switch(scheme,
       equal = stats::setNames(rep(1, length(traits)), traits),
       precision = {
+        # `se_sampling`, not `se`: the full standard error of a standardized
+        # effect carries a d^2 term, so weighting by 1/se^2 would systematically
+        # demote the traits that responded most to the stress.
+        se_col <- if ("se_sampling" %in% names(x)) "se_sampling" else "se"
         v <- vapply(
           traits,
           function(tr) {
-            se <- x$se[x$trait == tr]
+            se <- x[[se_col]][x$trait == tr]
             se <- se[is.finite(se) & se > 0]
             if (length(se) == 0L) NA_real_ else 1 / mean(se^2)
           },
@@ -86,8 +90,14 @@ sri_weights <- function(x, weights) {
 #' \describe{
 #'   \item{`"equal"`}{Every trait contributes the same amount. Use it when the
 #'     trait panel was chosen a priori and no trait should dominate.}
-#'   \item{`"precision"`}{Weight proportional to \eqn{1/\overline{SE^2}}, so that
-#'     noisy traits with few replicates are down-weighted.}
+#'   \item{`"precision"`}{Inverse-variance weighting on the sampling component
+#'     of the index (`se_sampling`), so that traits measured on fewer plants, or
+#'     with more missing values, count for less. Note that once a trait has been
+#'     standardized its precision depends only on replication: in a balanced
+#'     trial with no missing data every trait carries the same weight and this
+#'     scheme coincides with `"equal"`. It deliberately ignores the part of the
+#'     standard error that grows with the effect size, which would otherwise
+#'     down-weight the traits that responded most to the stress.}
 #'   \item{`"pca"`}{Absolute loadings of the first principal component of the
 #'     unit-by-trait index matrix; traits that carry the dominant axis of stress
 #'     variation weigh more. Requires at least three units and two varying

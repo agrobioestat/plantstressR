@@ -10,6 +10,7 @@ stress_network(
   traits = NULL,
   treatment = NULL,
   level = NULL,
+  block = NULL,
   method = c("partial", "pearson", "spearman"),
   lambda = "auto",
   threshold = 0.1,
@@ -33,6 +34,12 @@ network to particular levels.}
 \item{level}{Optional character vector of \code{treatment} levels to keep. A
 network estimated only on stressed plants describes the stressed
 physiology; one estimated on the whole trial mixes both regimes.}
+
+\item{block}{Optional name of a block (replicate) column. Every trait is
+first cleared of its additive block effect, because a block that is
+uniformly more vigorous raises all traits measured in it at once and would
+otherwise appear as correlation between them. The degrees of freedom spent
+on the block effects are removed from the edge tests.}
 
 \item{method}{\code{"partial"} (default), \code{"pearson"} or \code{"spearman"}. The last two
 produce a marginal correlation network.}

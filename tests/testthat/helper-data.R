@@ -18,3 +18,29 @@ toy_trial <- function(n = 8) {
     stringsAsFactors = FALSE
   )
 }
+
+# The same trial laid out in complete blocks, with a large additive block shift
+# on top of the treatment effect. Any routine that handles blocks correctly must
+# recover the treatment difference unchanged while removing the block spread.
+toy_block_trial <- function(n_per_block = 4, n_blocks = 4, block_shift = 5) {
+  base <- expand.grid(
+    rep = seq_len(n_per_block),
+    block = paste0("B", seq_len(n_blocks)),
+    trt = c("ctrl", "stress"),
+    genotype = c("A", "B"),
+    stringsAsFactors = FALSE
+  )
+  shift <- block_shift * (as.integer(factor(base$block)) - 1)
+  trt_effect <- ifelse(base$trt == "stress", 1, 0)
+  geno_scale <- ifelse(base$genotype == "A", 2, 1)
+  jitter <- (base$rep - mean(seq_len(n_per_block))) / 10
+
+  data.frame(
+    genotype = base$genotype,
+    block = base$block,
+    trt = base$trt,
+    up = 10 + 3 * trt_effect * geno_scale + shift + jitter,
+    down = 10 - 3 * trt_effect * geno_scale + shift + jitter,
+    stringsAsFactors = FALSE
+  )
+}

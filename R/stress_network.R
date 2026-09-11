@@ -85,6 +85,11 @@ partial_correlation <- function(r) {
 #' @param level Optional character vector of `treatment` levels to keep. A
 #'   network estimated only on stressed plants describes the stressed
 #'   physiology; one estimated on the whole trial mixes both regimes.
+#' @param block Optional name of a block (replicate) column. Every trait is
+#'   first cleared of its additive block effect, because a block that is
+#'   uniformly more vigorous raises all traits measured in it at once and would
+#'   otherwise appear as correlation between them. The degrees of freedom spent
+#'   on the block effects are removed from the edge tests.
 #' @param method `"partial"` (default), `"pearson"` or `"spearman"`. The last two
 #'   produce a marginal correlation network.
 #' @param lambda Shrinkage intensity for the partial-correlation estimate:
@@ -129,6 +134,7 @@ stress_network <- function(data,
                            traits = NULL,
                            treatment = NULL,
                            level = NULL,
+                           block = NULL,
                            method = c("partial", "pearson", "spearman"),
                            lambda = "auto",
                            threshold = 0.1,
@@ -142,6 +148,7 @@ stress_network <- function(data,
   check_prob(threshold, "threshold")
   check_prob(alpha, "alpha")
   check_p_adjust(p_adjust)
+  if (!is.null(block)) check_column(data, block, "block")
 
   if (!is.null(treatment)) {
     check_column(data, treatment, "treatment")
@@ -157,9 +164,18 @@ stress_network <- function(data,
     }
   }
 
-  traits <- resolve_traits(data, traits, exclude = c(treatment))
+  traits <- resolve_traits(data, traits, exclude = c(treatment, block))
   if (length(traits) < 3L) {
     ps_abort("At least three traits are required to build a network.")
+  }
+
+  # Block effects shift whole replicates and would otherwise show up as
+  # correlation between every pair of traits measured on them.
+  if (!is.null(block)) {
+    if (length(unique(stats::na.omit(as.character(data[[block]])))) < 2L) {
+      ps_abort(paste0("Column `", block, "` has fewer than two levels."))
+    }
+    data <- block_adjust_traits(data, traits, treatment, block)
   }
 
   x <- as.matrix(data[traits])
@@ -174,15 +190,23 @@ stress_network <- function(data,
     ps_abort("The correlation matrix contains missing values; drop traits with too few paired observations.")
   }
 
+  # Estimating block effects costs degrees of freedom that the edge tests must
+  # not spend twice.
+  df_block <- if (is.null(block)) {
+    0L
+  } else {
+    length(unique(stats::na.omit(as.character(data[[block]])))) - 1L
+  }
+
   lambda_used <- NA_real_
   if (method == "partial") {
     shrunk <- shrink_correlation(r, lambda)
     lambda_used <- shrunk$lambda
     mat <- partial_correlation(shrunk$matrix)
-    df_res <- n - length(traits)
+    df_res <- n - length(traits) - df_block
   } else {
     mat <- r
-    df_res <- n - 2L
+    df_res <- n - 2L - df_block
   }
 
   pairs <- utils::combn(traits, 2L, simplify = FALSE)
@@ -287,7 +311,8 @@ stress_network <- function(data,
       n_traits = length(traits),
       modularity = modularity_value,
       treatment = treatment,
-      level = level
+      level = level,
+      block = block
     )
   )
   class(out) <- "plantstress_network"

@@ -8,6 +8,7 @@ knitr::opts_chunk$set(
   comment = "#>",
   fig.path = "man/figures/README-",
   out.width = "100%",
+  fig.cap = "",
   dpi = 96
 )
 ```
@@ -48,6 +49,24 @@ remotes::install_github("agrobioestat/plantstressR")
 | `stress_module_scores()` | The modules scored with the trait indices |
 | `stress_tolerance_index()` | The classical selection indices (`STI`, `SSI`, `GMP`, `TOL`, ...) |
 | `stress_ordination()` | The sample-level view of the trait space |
+| `run_plantstress_app()` | The whole workflow in a Shiny dashboard, no code |
+
+Every design function takes `block =` for randomized complete block designs.
+
+## Point and click
+
+If you would rather not write the script at all:
+
+```r
+# install.packages("shiny")
+run_plantstress_app()
+```
+
+The dashboard loads your CSV, asks which columns are the treatment, the
+genotype, the block and the traits, and then gives you the same signature,
+ranking, network, ordination and tolerance indices the functions below
+produce — every panel is computed by the exported functions themselves, so
+anything you see can be reproduced from a script.
 
 ## Example
 
@@ -62,6 +81,7 @@ sri <- calculate_sri(
   control = "control",
   traits = traits,
   by = "genotype",
+  block = "block",
   verbose = FALSE
 )
 
@@ -71,6 +91,11 @@ summary(sri)
 Positive values always mean *stress impaired this trait*, whichever direction
 the trait moves. `Fv/Fm` falling and `DI0/RC` rising are both damage, and
 `trait_directions()` keeps that bookkeeping straight.
+
+`block = "block"` is what makes this a blocked analysis: each trait is fitted
+as `trait ~ treatment + block` within the genotype, so the variation between
+replicates leaves the scale instead of diluting the effect. Drop the argument
+and you get the completely randomized reading of the same table.
 
 Rank the genotypes:
 
@@ -92,6 +117,7 @@ net <- stress_network(
   traits = traits,
   treatment = "drought_level",
   level = c("moderate", "severe"),
+  block = "block",
   sri = sri
 )
 

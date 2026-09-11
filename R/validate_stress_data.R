@@ -19,6 +19,10 @@
 #' @param by Optional name of a grouping column (typically genotype, cultivar or
 #'   site). When supplied, every level must contain both control and stress
 #'   observations.
+#' @param block Optional name of a block (replicate) column. When supplied, the
+#'   design is additionally checked for enough block levels, for treatments
+#'   confined to a single block (which cannot be separated from it) and for
+#'   empty treatment-by-block cells.
 #' @param min_replicates Minimum number of observations expected per design
 #'   cell. Cells below this threshold are flagged.
 #' @param max_missing Maximum acceptable proportion of missing values per trait.
@@ -27,7 +31,7 @@
 #' @return Invisibly, an object of class `"plantstress_validation"`: a list with
 #'   `ok`, `issues` (a tibble with columns `severity`, `check` and `message`),
 #'   `design` (replication per design cell), `traits`, `treatment`, `control`,
-#'   `stress_levels` and `by`.
+#'   `stress_levels`, `by` and `block`.
 #'
 #' @seealso [calculate_sri()]
 #'
@@ -47,12 +51,14 @@ validate_stress_data <- function(data,
                                  control,
                                  traits = NULL,
                                  by = NULL,
+                                 block = NULL,
                                  min_replicates = 3L,
                                  max_missing = 0.2,
                                  verbose = TRUE) {
   check_data(data)
   check_column(data, treatment, "treatment")
   if (!is.null(by)) check_column(data, by, "by")
+  if (!is.null(block)) check_column(data, block, "block")
   check_prob(max_missing, "max_missing")
   if (!is.numeric(min_replicates) || length(min_replicates) != 1L ||
     is.na(min_replicates) || min_replicates < 2) {
@@ -79,7 +85,7 @@ validate_stress_data <- function(data,
     ))
   }
 
-  traits <- resolve_traits(data, traits, exclude = c(treatment, by))
+  traits <- resolve_traits(data, traits, exclude = c(treatment, by, block))
 
   issues <- list()
   add_issue <- function(severity, check, message) {
@@ -128,6 +134,53 @@ validate_stress_data <- function(data,
           paste(without_control, collapse = ", "), "."
         )
       )
+    }
+  }
+
+  if (!is.null(block)) {
+    blk <- as.character(data[[block]])
+    if (anyNA(blk)) {
+      add_issue(
+        "warning", "block_na",
+        paste0(
+          sum(is.na(blk)), " row(s) have a missing `", block,
+          "` value and are ignored by the block adjustment."
+        )
+      )
+    }
+    n_blocks <- length(unique(stats::na.omit(blk)))
+    if (n_blocks < 2L) {
+      add_issue(
+        "error", "block_levels",
+        paste0(
+          "Column `", block, "` has ", n_blocks,
+          " level(s); at least two are required to estimate block effects."
+        )
+      )
+    } else {
+      # A treatment confined to a single block is not separable from it.
+      per_trt <- tapply(blk, trt, function(b) length(unique(stats::na.omit(b))))
+      confined <- names(per_trt)[!is.na(per_trt) & per_trt < 2L]
+      if (length(confined) > 0L) {
+        add_issue(
+          "error", "block_confounded",
+          paste0(
+            "Treatment level(s) present in a single block, so treatment and ",
+            "block cannot be separated: ", paste(confined, collapse = ", "), "."
+          )
+        )
+      }
+      cells <- table(trt, blk)
+      if (any(cells == 0L)) {
+        add_issue(
+          "warning", "block_incomplete",
+          paste0(
+            sum(cells == 0L), " treatment x block cell(s) are empty: the design ",
+            "is not a complete block layout and the adjusted means rely on the ",
+            "additive model to fill the gaps."
+          )
+        )
+      }
     }
   }
 
@@ -195,6 +248,7 @@ validate_stress_data <- function(data,
     control = control,
     stress_levels = stress_levels,
     by = by,
+    block = block,
     n_rows = nrow(data)
   )
   class(out) <- "plantstress_validation"
@@ -211,6 +265,7 @@ print.plantstress_validation <- function(x, ...) {
   cat("  Treatment:     ", x$treatment, " (control = ", x$control, ")\n", sep = "")
   cat("  Stress levels: ", paste(x$stress_levels, collapse = ", "), "\n", sep = "")
   cat("  Grouping:      ", x$by %||% "<none>", "\n", sep = "")
+  cat("  Block:         ", x$block %||% "<none>", "\n", sep = "")
   cat("  Traits:        ", length(x$traits), "\n", sep = "")
   if (nrow(x$issues) == 0L) {
     cat("  Status:        no issues detected\n")

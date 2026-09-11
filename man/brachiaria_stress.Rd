@@ -5,12 +5,14 @@
 \alias{brachiaria_stress}
 \title{Synthetic Brachiaria Drought Phenotyping Trial}
 \format{
-A tibble with 120 rows and 33 columns:
+A tibble with 120 rows and 34 columns:
 \describe{
 \item{sample_id}{Sample identifier}
 \item{genotype}{Genotype label}
 \item{treatment}{Water treatment label}
 \item{drought_level}{Stress class (\code{control}, \code{moderate}, \code{severe})}
+\item{block}{Replicate block (\code{B1}-\code{B4}); every trait carries an additive
+block shift, so the data set exercises the \verb{block =} argument}
 \item{Fo, Fm, Fv_Fm, ABS_RC, TR0_RC, ET0_RC, DI0_RC, PIabs}{OJIP traits}
 \item{A, gs, E, Ci, WUE}{Gas exchange traits}
 \item{SPAD}{Leaf chlorophyll index}
@@ -26,6 +28,7 @@ Simulated with \code{simulate_brachiaria_stress()}.
 \description{
 A synthetic control-versus-drought phenotyping trial used throughout the
 documentation of \code{plantstressR}. Four genotypes were measured under three
-water regimes for 29 physiological, growth and productivity traits.
+water regimes for 29 physiological, growth and productivity traits, laid out
+in four complete blocks.
 }
 \keyword{datasets}

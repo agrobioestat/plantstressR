@@ -43,8 +43,25 @@ simulate_brachiaria_stress <- function(n = 120, seed = 123) {
 
   g_eff <- stats::rnorm(length(genotype_levels), mean = 0, sd = 0.25)
   names(g_eff) <- genotype_levels
-  ge <- g_eff[genotype]
+  # `unname()` matters: indexing a named vector by genotype would otherwise
+  # stick a `names` attribute on every trait column of the returned table.
+  ge <- unname(g_eff[genotype])
   eps <- function(sd) stats::rnorm(n, mean = 0, sd = sd)
+
+  # Blocks are complete replicates of the trial. One bench, strip or shelf sits
+  # slightly better or worse than the others, which lifts or lowers every trait
+  # measured in it at once -- the nuisance stratum that `block =` removes.
+  block_levels <- paste0("B", 1:4)
+  # Blocks are allocated within each water regime, so that every treatment is
+  # represented in every block and the layout is a genuinely complete design.
+  block <- character(n)
+  for (lv in drought_levels) {
+    idx <- which(drought_level == lv)
+    block[idx] <- rep_len(block_levels, length(idx))
+  }
+  b_eff <- stats::rnorm(length(block_levels), mean = 0, sd = 0.55)
+  names(b_eff) <- block_levels
+  be <- unname(b_eff[block])
 
   # Latent physiological factors shared by functionally related traits. They are
   # what makes the trait network of this data set modular: without them, traits
@@ -98,6 +115,7 @@ simulate_brachiaria_stress <- function(n = 120, seed = 123) {
     genotype = genotype,
     treatment = treatment,
     drought_level = factor(drought_level, levels = drought_levels),
+    block = block,
     Fo = Fo,
     Fm = Fm,
     Fv_Fm = Fv_Fm,
@@ -131,6 +149,13 @@ simulate_brachiaria_stress <- function(n = 120, seed = 123) {
 
   numeric_cols <- names(dat)[vapply(dat, is.numeric, logical(1))]
   numeric_cols <- setdiff(numeric_cols, "sample_id")
+
+  # The block shift is applied on each trait's own scale, so that removing it
+  # is worth the same amount of variance wherever the trait is measured.
+  for (nm in numeric_cols) {
+    dat[[nm]] <- dat[[nm]] + be * stats::sd(dat[[nm]])
+  }
+
   for (nm in numeric_cols) {
     vals <- dat[[nm]]
     if (nm == "leaf_water_potential") {
@@ -158,14 +183,17 @@ simulate_brachiaria_stress <- function(n = 120, seed = 123) {
 #' @description
 #' A synthetic control-versus-drought phenotyping trial used throughout the
 #' documentation of `plantstressR`. Four genotypes were measured under three
-#' water regimes for 29 physiological, growth and productivity traits.
+#' water regimes for 29 physiological, growth and productivity traits, laid out
+#' in four complete blocks.
 #'
-#' @format A tibble with 120 rows and 33 columns:
+#' @format A tibble with 120 rows and 34 columns:
 #' \describe{
 #'   \item{sample_id}{Sample identifier}
 #'   \item{genotype}{Genotype label}
 #'   \item{treatment}{Water treatment label}
 #'   \item{drought_level}{Stress class (`control`, `moderate`, `severe`)}
+#'   \item{block}{Replicate block (`B1`-`B4`); every trait carries an additive
+#'     block shift, so the data set exercises the `block =` argument}
 #'   \item{Fo, Fm, Fv_Fm, ABS_RC, TR0_RC, ET0_RC, DI0_RC, PIabs}{OJIP traits}
 #'   \item{A, gs, E, Ci, WUE}{Gas exchange traits}
 #'   \item{SPAD}{Leaf chlorophyll index}

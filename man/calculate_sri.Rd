@@ -12,6 +12,7 @@ calculate_sri(
   control,
   traits = NULL,
   by = NULL,
+  block = NULL,
   direction = "auto",
   method = c("glass", "cohen", "hedges", "relative"),
   conf_level = 0.95,
@@ -37,6 +38,15 @@ column that is not a design column.}
 
 \item{by}{Optional grouping column (typically genotype). Indices are computed
 within each level, against that level's own control.}
+
+\item{block}{Optional name of a block (replicate) column. When supplied, the
+index is estimated from an additive \code{trait ~ treatment + block} model
+within each unit, so that a replicate which happened to sit in a wetter
+corner of the glasshouse shifts neither the difference nor the scale. The
+scaling standard deviation becomes the residual (within-block) one, the
+test is the model's t-test on the treatment contrast, and the whole trial
+contributes to the residual degrees of freedom instead of each pair of
+groups separately. Leave \code{NULL} for a completely randomized design.}
 
 \item{direction}{How each trait responds to stress. Either \code{"auto"} (the
 default, resolved by \code{\link[=trait_directions]{trait_directions()}}), a single string applied to all
@@ -67,8 +77,15 @@ An object of class \code{"plantstress_sri"}, a tibble with one row per
 unit, stress level and trait, and columns \code{unit}, \code{group}, \code{trait},
 \code{direction}, \code{n_control}, \code{n_stress}, \code{mean_control}, \code{sd_control},
 \code{mean_stress}, \code{sd_stress}, \code{difference}, \code{effect}, \code{sri}, \code{se},
-\code{conf_low}, \code{conf_high}, \code{statistic}, \code{p_value} and \code{p_adj}. \code{unit} is
-\code{"overall"} when \code{by} is \code{NULL}.
+\code{se_sampling}, \code{conf_low}, \code{conf_high}, \code{statistic}, \code{p_value} and
+\code{p_adj}. \code{unit} is \code{"overall"} when \code{by} is \code{NULL}.
+
+\code{se} is the full standard error of the index and is what the confidence
+limits use. \code{se_sampling} holds only the component due to sampling the
+experimental units, with the scaling standard deviation treated as fixed;
+it is the quantity \code{\link[=integrated_stress_index]{integrated_stress_index()}} uses for precision
+weighting, because the full \code{se} grows with the effect itself and would
+otherwise penalise exactly the traits that responded to the stress.
 }
 \description{
 Converts each physiological trait into a Stress Response Index: the

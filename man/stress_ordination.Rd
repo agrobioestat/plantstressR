@@ -10,6 +10,7 @@ stress_ordination(
   data,
   treatment = NULL,
   traits = NULL,
+  block = NULL,
   ncomp = 2L,
   scale = TRUE,
   engine = c("stats", "FactoMineR")
@@ -26,6 +27,11 @@ stress_ordination(
 
 \item{traits}{Character vector of trait columns. Defaults to every numeric
 column that is not a design column.}
+
+\item{block}{Optional name of a block (replicate) column whose additive
+effect is removed from every trait before the decomposition, so that the
+first components describe treatment and genotype rather than the layout of
+the trial.}
 
 \item{ncomp}{Number of components to retain.}
 

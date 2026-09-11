@@ -140,6 +140,90 @@ z_multiplier <- function(conf_level) {
   stats::qnorm(1 - (1 - conf_level) / 2)
 }
 
+# Block (randomized complete block) support ------------------------------
+# Blocks are nuisance strata: they shift a whole replicate up or down without
+# changing what the treatment did. Every block-aware routine in the package
+# removes the same additive, mean-centred block effect estimated from
+# `value ~ treatment + block`, so that treatment means are preserved exactly
+# and only the between-block variance is taken out.
+
+# Centred block effects, or NULL when the design cannot support the fit.
+block_effects <- function(value, trt, blk) {
+  ok <- !is.na(value) & !is.na(trt) & !is.na(blk)
+  if (sum(ok) < 3L) {
+    return(NULL)
+  }
+  v <- value[ok]
+  f_trt <- factor(as.character(trt[ok]))
+  f_blk <- factor(as.character(blk[ok]))
+  if (nlevels(f_blk) < 2L) {
+    return(NULL)
+  }
+
+  fit <- if (nlevels(f_trt) < 2L) {
+    try(stats::lm(v ~ f_blk), silent = TRUE)
+  } else {
+    try(stats::lm(v ~ f_trt + f_blk), silent = TRUE)
+  }
+  if (inherits(fit, "try-error")) {
+    return(NULL)
+  }
+  df_res <- stats::df.residual(fit)
+  if (is.na(df_res) || df_res < 1L) {
+    return(NULL)
+  }
+
+  cf <- stats::coef(fit)
+  idx <- grep("^f_blk", names(cf))
+  eff <- stats::setNames(rep(0, nlevels(f_blk)), levels(f_blk))
+  if (length(idx) > 0L) {
+    eff[sub("^f_blk", "", names(cf)[idx])] <- cf[idx]
+  }
+  eff[!is.finite(eff)] <- 0
+  eff - mean(eff)
+}
+
+# Subtract the centred block effect from each observation. Values whose block
+# could not be estimated are returned untouched.
+block_adjust <- function(value, trt, blk) {
+  eff <- block_effects(value, trt, blk)
+  if (is.null(eff)) {
+    return(value)
+  }
+  shift <- eff[as.character(blk)]
+  shift[is.na(shift)] <- 0
+  value - unname(shift)
+}
+
+# Apply the adjustment trait by trait over a whole table.
+block_adjust_traits <- function(data, traits, treatment, block) {
+  trt <- if (is.null(treatment)) rep("all", nrow(data)) else as.character(data[[treatment]])
+  blk <- as.character(data[[block]])
+  for (tr in traits) {
+    data[[tr]] <- block_adjust(data[[tr]], trt, blk)
+  }
+  data
+}
+
+# Residual standard deviation of one treatment group once its block effects
+# have been accounted for; falls back to the plain sd when blocks are unusable.
+block_residual_sd <- function(value, blk) {
+  ok <- !is.na(value) & !is.na(blk)
+  v <- value[ok]
+  b <- factor(as.character(blk[ok]))
+  if (length(v) < 2L) {
+    return(NA_real_)
+  }
+  if (nlevels(b) < 2L || nlevels(b) >= length(v)) {
+    return(stats::sd(v))
+  }
+  fit <- try(stats::lm(v ~ b), silent = TRUE)
+  if (inherits(fit, "try-error") || stats::df.residual(fit) < 1L) {
+    return(stats::sd(v))
+  }
+  stats::sigma(fit)
+}
+
 # Temporarily set the RNG seed and restore the caller's stream on exit, so that
 # reproducible graph layouts never leak into the user's random number state.
 ps_local_seed <- function(seed, env = parent.frame()) {

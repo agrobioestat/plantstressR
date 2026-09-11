@@ -60,8 +60,14 @@ Four weighting schemes are available:
 \describe{
 \item{\code{"equal"}}{Every trait contributes the same amount. Use it when the
 trait panel was chosen a priori and no trait should dominate.}
-\item{\code{"precision"}}{Weight proportional to \eqn{1/\overline{SE^2}}, so that
-noisy traits with few replicates are down-weighted.}
+\item{\code{"precision"}}{Inverse-variance weighting on the sampling component
+of the index (\code{se_sampling}), so that traits measured on fewer plants, or
+with more missing values, count for less. Note that once a trait has been
+standardized its precision depends only on replication: in a balanced
+trial with no missing data every trait carries the same weight and this
+scheme coincides with \code{"equal"}. It deliberately ignores the part of the
+standard error that grows with the effect size, which would otherwise
+down-weight the traits that responded most to the stress.}
 \item{\code{"pca"}}{Absolute loadings of the first principal component of the
 unit-by-trait index matrix; traits that carry the dominant axis of stress
 variation weigh more. Requires at least three units and two varying

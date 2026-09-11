@@ -24,6 +24,10 @@
 #' @param treatment Optional name of a column used to color and group samples.
 #' @param traits Character vector of trait columns. Defaults to every numeric
 #'   column that is not a design column.
+#' @param block Optional name of a block (replicate) column whose additive
+#'   effect is removed from every trait before the decomposition, so that the
+#'   first components describe treatment and genotype rather than the layout of
+#'   the trial.
 #' @param ncomp Number of components to retain.
 #' @param scale Logical. Scale traits to unit variance.
 #' @param engine `"stats"` (default) or `"FactoMineR"`.
@@ -50,18 +54,23 @@
 stress_ordination <- function(data,
                               treatment = NULL,
                               traits = NULL,
+                              block = NULL,
                               ncomp = 2L,
                               scale = TRUE,
                               engine = c("stats", "FactoMineR")) {
   engine <- match.arg(engine)
   check_data(data)
   if (!is.null(treatment)) check_column(data, treatment, "treatment")
+  if (!is.null(block)) check_column(data, block, "block")
   if (!is.numeric(ncomp) || length(ncomp) != 1L || is.na(ncomp) || ncomp < 2) {
     ps_abort("`ncomp` must be a numeric scalar >= 2.")
   }
   ncomp <- as.integer(ncomp)
 
-  traits <- resolve_traits(data, traits, exclude = treatment)
+  traits <- resolve_traits(data, traits, exclude = c(treatment, block))
+  if (!is.null(block)) {
+    data <- block_adjust_traits(data, traits, treatment, block)
+  }
   mat <- impute_column_means(as.matrix(data[traits]))
 
   sds <- apply(mat, 2, stats::sd)

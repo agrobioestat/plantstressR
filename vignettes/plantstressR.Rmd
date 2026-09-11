@@ -109,6 +109,51 @@ Choosing `method`:
 | `"hedges"` | Pooled SD, bias corrected | Few replicates per plot |
 | `"relative"` | Control mean | You want a percentage change, on ratio-scale traits only |
 
+### Trials laid out in blocks
+
+Most field and glasshouse trials are not completely randomized: plants sit in
+benches, strips or runs, and a whole replicate can be slightly more vigorous
+than the others for reasons that have nothing to do with the treatment. That
+between-block spread lands in the standard deviation that scales the index,
+and a diluted scale means a diluted signature.
+
+Naming the block column is all it takes. Each trait is then fitted as
+`trait ~ treatment + block` within the unit, the difference between adjusted
+means becomes the numerator, and the residual — block-free — standard
+deviation becomes the scale:
+
+```{r sri-block}
+sri_rcbd <- calculate_sri(
+  brachiaria_stress,
+  treatment = "drought_level",
+  control = "control",
+  traits = traits,
+  by = "genotype",
+  block = "block"
+)
+
+summary(sri_rcbd)
+```
+
+The treatment difference is a property of the data and does not move. What
+changes is the scale it is divided by, so the same experiment speaks louder
+once the blocks are accounted for:
+
+```{r block-comparison}
+data.frame(
+  design = c("completely randomized", "randomized complete block"),
+  mean_abs_sri = c(
+    mean(abs(sri$sri), na.rm = TRUE),
+    mean(abs(sri_rcbd$sri), na.rm = TRUE)
+  )
+)
+```
+
+`stress_network()` and `stress_ordination()` take the same argument, and
+`validate_stress_data()` will tell you when the layout cannot support it — for
+instance when a treatment sits inside a single block, where its effect and the
+block's effect are the same number.
+
 ## Step 3 — see the signature
 
 ```{r heatmap, fig.height = 5}
@@ -154,9 +199,19 @@ Choosing `weights`:
 | `weights` | Meaning |
 |---|---|
 | `"equal"` | Every trait counts the same; use with an a priori trait panel |
-| `"precision"` | Noisy, poorly replicated traits are down-weighted |
+| `"precision"` | Traits measured on fewer plants are down-weighted |
 | `"pca"` | Traits carrying the dominant axis of stress variation weigh more |
 | named vector | Expert weights, rescaled to sum to one |
+
+A word on `"precision"`. Once a trait has been standardized, its precision no
+longer depends on how noisy the instrument was — that noise is already in the
+denominator. What remains is replication. So in a balanced trial with no
+missing values `"precision"` gives the same answer as `"equal"`, and it only
+starts to matter when some traits were measured on fewer plants than others,
+which is the usual fate of gas exchange next to SPAD. Weighting by the full
+standard error of the index instead would be a mistake: that quantity grows
+with the effect size itself, so it would quietly demote the very traits that
+responded to the stress.
 
 `plot()` gives the two figures that belong together: the ranking, and the
 decomposition that justifies it.
@@ -264,9 +319,15 @@ merge(
 ## The whole workflow
 
 ```{r workflow, eval = FALSE}
-sri <- calculate_sri(data, treatment = "trt", control = "ctrl", by = "genotype")
-isi <- integrated_stress_index(sri, weights = "precision")
-net <- stress_network(data, treatment = "trt", level = "stress", sri = sri)
+sri <- calculate_sri(data,
+  treatment = "trt", control = "ctrl",
+  by = "genotype", block = "block"
+)
+isi <- integrated_stress_index(sri, weights = "equal")
+net <- stress_network(data,
+  treatment = "trt", level = "stress",
+  block = "block", sri = sri
+)
 
 plot(sri)                          # the signature
 plot(isi)                          # the ranking
@@ -275,6 +336,21 @@ stress_module_scores(net, sri)     # the modules, scored
 ```
 
 One table in, four answers out.
+
+## Without writing any of it
+
+The same workflow is available as a Shiny dashboard, which is often the
+quickest way to explore a new trial or to hand the analysis to someone who
+does not work in R:
+
+```{r app, eval = FALSE}
+# install.packages("shiny")
+run_plantstress_app()
+```
+
+Load a CSV, point the app at the treatment, genotype, block and trait columns,
+and every tab is computed by the exported functions used above — so any result
+seen on screen can be reproduced by a script.
 
 ```{r session}
 sessionInfo()
