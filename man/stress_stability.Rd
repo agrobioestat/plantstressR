@@ -86,7 +86,7 @@ Wricke G. (1962). Uber eine Methode zur Erfassung der okologischen Streubreite
 in Feldversuchen. Zeitschrift fur Pflanzenzuchtung 47, 92-96.
 
 Finlay K.W., Wilkinson G.N. (1963). The analysis of adaptation in a plant
-breeding programme. \doi{10.1071/AR9630742}
+breeding program. \doi{10.1071/AR9630742}
 }
 \seealso{
 \code{\link[=integrated_stress_index]{integrated_stress_index()}}, \code{\link[=calculate_sri]{calculate_sri()}}

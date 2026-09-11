@@ -22,7 +22,7 @@ test_that("the fast path reproduces the differences of the full computation", {
   }
 })
 
-test_that("stress_index_ci brackets the observed index and ranks", {
+test_that("stress_index_ci returns a coherent interval and rank range", {
   data(brachiaria_stress, envir = environment())
   sri <- calculate_sri(brachiaria_stress,
     treatment = "drought_level", control = "control",
@@ -32,10 +32,12 @@ test_that("stress_index_ci brackets the observed index and ranks", {
 
   ci <- stress_index_ci(sri, n_boot = 30, seed = 42)
   expect_s3_class(ci, "plantstress_isi_ci")
-  expect_true(all(ci$conf_low <= ci$isi))
-  expect_true(all(ci$conf_high >= ci$isi))
-  expect_true(all(ci$rank_low <= ci$rank))
-  expect_true(all(ci$rank_high >= ci$rank))
+  # Note what is *not* asserted: a percentile interval is not required to
+  # contain the point estimate, and a skewed bootstrap distribution can legally
+  # put `isi` outside its own limits.
+  expect_true(all(ci$conf_low <= ci$conf_high))
+  expect_true(all(is.finite(ci$conf_low) & is.finite(ci$conf_high)))
+  expect_true(all(ci$rank_low <= ci$rank_high))
   expect_true(all(ci$p_best >= 0 & ci$p_best <= 1))
   expect_true(all(ci$n_ok <= 30))
 

@@ -258,7 +258,7 @@ long upper tails.
 
 ## Step 4c — more than one site, or more than one year
 
-Everything so far describes a single trial. A breeding programme rarely stops
+Everything so far describes a single trial. A breeding program rarely stops
 there: the same genotypes are grown at several sites, or repeated across
 seasons, and the question becomes whether a ranking obtained in one place
 travels to the next.

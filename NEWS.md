@@ -1,3 +1,25 @@
+# plantstressR 0.5.1
+
+Fixes found by the Linux job of the continuous integration, which failed while
+the Windows and macOS jobs passed.
+
+## Bug fixes
+
+* The test suite asserted that the bootstrap interval contains the point
+  estimate. It is not required to: a percentile interval built from a skewed
+  bootstrap distribution can legitimately exclude the observed value, and the
+  assertion held on two platforms only by numerical luck. The invariant was
+  wrong, not the interval, and the documentation now states the property.
+* `stress_index_ci()` warns when a unit is laid out in fewer than four blocks.
+  Blocked trials are resampled block by block, so it is the number of blocks and
+  not the number of plants that decides how many distinct resamples exist; with
+  two or three of them a large share of the draws repeat the same block and the
+  interval is coarse.
+* `plot()` on a bootstrap interval no longer calls the deprecated
+  `ggplot2::geom_errorbarh()`.
+* British spellings corrected in the documentation, which declares `en-US`, and
+  the German title of the Wricke reference added to the word list.
+
 # plantstressR 0.5.0
 
 Multi-environment trials.
@@ -58,7 +80,7 @@ An uncertainty statement for the ranking.
   `"fixed"` holds each trait at its observed scaling, so the interval describes
   the plants' response rather than the yardstick; `"resampled"` recomputes
   everything and is both slower and heavier-tailed.
-* `calculate_sri()` now keeps the columns it analysed inside the returned
+* `calculate_sri()` now keeps the columns it analyzed inside the returned
   object, which is what lets `stress_index_ci()` resample without being handed
   the table again.
 
@@ -91,7 +113,7 @@ weighting that changes published rankings.
 
 ## Bug fixes
 
-* `integrated_stress_index(weights = "precision")` no longer penalises the
+* `integrated_stress_index(weights = "precision")` no longer penalizes the
   traits that responded to the stress. The full standard error of a
   standardized effect contains a `d^2` term, so weighting by `1/se^2` demoted
   precisely the traits carrying the signal: on the bundled example the weight

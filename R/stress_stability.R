@@ -51,7 +51,7 @@
 #' in Feldversuchen. Zeitschrift fur Pflanzenzuchtung 47, 92-96.
 #'
 #' Finlay K.W., Wilkinson G.N. (1963). The analysis of adaptation in a plant
-#' breeding programme. \doi{10.1071/AR9630742}
+#' breeding program. \doi{10.1071/AR9630742}
 #'
 #' @seealso [integrated_stress_index()], [calculate_sri()]
 #'

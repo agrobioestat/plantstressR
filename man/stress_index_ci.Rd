@@ -87,14 +87,23 @@ but expect long upper tails whenever a trait has a small control variance.
 \code{"pca"} weights are recomputed from the resampled indices either way.
 
 \code{p_best} is the proportion of resamples in which a unit came out ranked
-first. Read it as the evidence that this genotype, and not its neighbour in
+first. Read it as the evidence that this genotype, and not its neighbor in
 the table, is the most tolerant one of that stress level: a \code{p_best} of 0.30
 at the top of a ranking means the winner is barely distinguishable from the
 rest.
 
-Replicates in which the resampled trial cannot be analysed at all -- a design
+Replicates in which the resampled trial cannot be analyzed at all -- a design
 cell that lost its control plants, say -- are discarded, and \code{n_ok} reports
 how many of the \code{n_boot} attempts contributed.
+
+Two properties of a percentile interval are worth knowing before reading the
+output. It is \strong{not} guaranteed to contain \code{isi}: when the bootstrap
+distribution is skewed or shifted, the observed estimate can sit outside its
+own interval, and that is a signal about the estimator rather than a fault.
+And a blocked trial is resampled at the level of the block, so the number of
+blocks -- not the number of plants -- sets how many distinct resamples exist:
+with three blocks or fewer a large share of the draws repeat the same block,
+the bootstrap distribution becomes lumpy, and \code{stress_index_ci()} says so.
 }
 \examples{
 data(brachiaria_stress)

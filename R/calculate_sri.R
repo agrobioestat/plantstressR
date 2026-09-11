@@ -274,7 +274,7 @@ sri_effect_blocked <- function(value, trt, blk, control, stress_levels,
 #'   experimental units, with the scaling standard deviation treated as fixed;
 #'   it is the quantity [integrated_stress_index()] uses for precision
 #'   weighting, because the full `se` grows with the effect itself and would
-#'   otherwise penalise exactly the traits that responded to the stress.
+#'   otherwise penalize exactly the traits that responded to the stress.
 #'
 #' @references
 #' Fischer R.A., Maurer R. (1978). Drought resistance in spring wheat cultivars.

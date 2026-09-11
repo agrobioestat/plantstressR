@@ -147,10 +147,15 @@ test_that("the bootstrap follows a multi-environment design", {
     treatment = "trt", control = "ctrl", traits = c("up", "down"),
     by = c("genotype", "site"), block = "block", verbose = FALSE
   )
-  ci <- stress_index_ci(sri, n_boot = 15, seed = 4)
+  # Each site holds only two blocks, so the block bootstrap is coarse and says
+  # so; that warning is the point of the check.
+  expect_warning(
+    ci <- stress_index_ci(sri, n_boot = 15, seed = 4),
+    class = "plantstressR_warning"
+  )
 
   expect_equal(nrow(ci), length(unique(sri$unit)) * length(unique(sri$group)))
-  expect_true(all(ci$conf_low <= ci$isi))
+  expect_true(all(ci$conf_low <= ci$conf_high))
 })
 
 test_that("stability has a plot method", {

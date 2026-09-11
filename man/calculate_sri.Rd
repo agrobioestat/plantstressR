@@ -89,7 +89,7 @@ limits use. \code{se_sampling} holds only the component due to sampling the
 experimental units, with the scaling standard deviation treated as fixed;
 it is the quantity \code{\link[=integrated_stress_index]{integrated_stress_index()}} uses for precision
 weighting, because the full \code{se} grows with the effect itself and would
-otherwise penalise exactly the traits that responded to the stress.
+otherwise penalize exactly the traits that responded to the stress.
 }
 \description{
 Converts each physiological trait into a Stress Response Index: the

@@ -1,6 +1,6 @@
 # Resample a trial while preserving its layout: whole blocks when the design is
 # blocked, individual plants inside each design cell otherwise. Duplicated
-# blocks are relabelled, because a block drawn twice is two replicates of the
+# blocks are relabeled, because a block drawn twice is two replicates of the
 # same stratum, not one stratum with twice the plants.
 resample_trial <- function(data, treatment, by, block) {
   unit <- unit_labels(data, by)
@@ -209,14 +209,23 @@ boot_replicate <- function(meta, weights, aggregate, rank_by, ruler = NULL) {
 #' `"pca"` weights are recomputed from the resampled indices either way.
 #'
 #' `p_best` is the proportion of resamples in which a unit came out ranked
-#' first. Read it as the evidence that this genotype, and not its neighbour in
+#' first. Read it as the evidence that this genotype, and not its neighbor in
 #' the table, is the most tolerant one of that stress level: a `p_best` of 0.30
 #' at the top of a ranking means the winner is barely distinguishable from the
 #' rest.
 #'
-#' Replicates in which the resampled trial cannot be analysed at all -- a design
+#' Replicates in which the resampled trial cannot be analyzed at all -- a design
 #' cell that lost its control plants, say -- are discarded, and `n_ok` reports
 #' how many of the `n_boot` attempts contributed.
+#'
+#' Two properties of a percentile interval are worth knowing before reading the
+#' output. It is **not** guaranteed to contain `isi`: when the bootstrap
+#' distribution is skewed or shifted, the observed estimate can sit outside its
+#' own interval, and that is a signal about the estimator rather than a fault.
+#' And a blocked trial is resampled at the level of the block, so the number of
+#' blocks -- not the number of plants -- sets how many distinct resamples exist:
+#' with three blocks or fewer a large share of the draws repeat the same block,
+#' the bootstrap distribution becomes lumpy, and `stress_index_ci()` says so.
 #'
 #' @param sri A `plantstress_sri` object from [calculate_sri()]. It carries the
 #'   trial and the settings it was computed with, which is what makes the
@@ -292,6 +301,24 @@ stress_index_ci <- function(sri,
     ))
   }
 
+  # A blocked trial is resampled block by block, so it is the blocks that have
+  # to be numerous, however many plants sit in them.
+  if (!is.null(meta$block)) {
+    per_unit <- tapply(
+      as.character(meta$data[[meta$block]]),
+      unit_labels(meta$data, meta$by),
+      function(b) length(unique(stats::na.omit(b)))
+    )
+    fewest <- suppressWarnings(min(per_unit, na.rm = TRUE))
+    if (is.finite(fewest) && fewest < 4L) {
+      ps_warn(paste0(
+        "Some unit is laid out in only ", fewest, " block(s). Whole blocks are ",
+        "drawn with replacement, so many resamples will repeat the same block ",
+        "and the interval will be coarse. Read it as indicative."
+      ))
+    }
+  }
+
   observed <- integrated_stress_index(
     sri,
     weights = weights, aggregate = aggregate,
@@ -321,7 +348,7 @@ stress_index_ci <- function(sri,
   }
   draws <- draws[!vapply(draws, is.null, logical(1))]
   if (length(draws) == 0L) {
-    ps_abort("No bootstrap replicate could be analysed; check the design of the trial.")
+    ps_abort("No bootstrap replicate could be analyzed; check the design of the trial.")
   }
   if (length(draws) < n_boot / 2) {
     ps_warn(paste0(
@@ -414,9 +441,9 @@ plot.plantstress_isi_ci <- function(x, top_n = NULL, ...) {
 
   ggplot2::ggplot(df, ggplot2::aes(x = .data$isi, y = .data$label)) +
     ggplot2::geom_vline(xintercept = 0, linetype = "dashed", colour = "grey60") +
-    ggplot2::geom_errorbarh(
+    ggplot2::geom_linerange(
       ggplot2::aes(xmin = .data$conf_low, xmax = .data$conf_high),
-      height = 0.22, colour = "grey35"
+      colour = "grey35", linewidth = 0.6
     ) +
     ggplot2::geom_point(ggplot2::aes(fill = .data$p_best),
       shape = 21, size = 3.4, colour = "grey25"
