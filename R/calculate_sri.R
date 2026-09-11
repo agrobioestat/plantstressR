@@ -432,7 +432,10 @@ calculate_sri <- function(data,
       direction = direction,
       method = method,
       conf_level = conf_level,
-      p_adjust = p_adjust
+      p_adjust = p_adjust,
+      # Only the columns the analysis used, so that stress_index_ci() can
+      # resample the trial without asking for the table a second time.
+      data = data[unique(c(treatment, by, block, traits))]
     )
   )
 }

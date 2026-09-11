@@ -36,6 +36,7 @@ remotes::install_github("agrobioestat/plantstressR")
 | `stress_module_scores()` | The modules scored with the trait indices |
 | `stress_tolerance_index()` | The classical selection indices (`STI`, `SSI`, `GMP`, `TOL`, …) |
 | `stress_ordination()` | The sample-level view of the trait space |
+| `stress_index_ci()` | Bootstrap limits and rank stability for the ranking |
 | `run_plantstress_app()` | The whole workflow in a Shiny dashboard, no code |
 
 Every design function takes `block =` for randomized complete block
@@ -119,6 +120,32 @@ integrated_stress_index(sri, weights = "precision")
 #> 7 G2    severe    6.64      60.1         9     3
 #> 8 G4    severe    7.63     100           9     4
 ```
+
+But is that order real? Resample the trial and find out:
+
+``` r
+stress_index_ci(sri, n_boot = 200, seed = 1)
+#> <plantstress_isi_ci>
+#>   Resamples: 200 of 200 usable
+#>   Interval:  95% percentile
+#>   Ranking:   tolerance (rank 1 = most tolerant)
+#>   p_best = share of resamples in which the unit ranked first
+#> # A tibble: 8 × 10
+#>   unit  group      isi conf_low conf_high  rank rank_low rank_high p_best  n_ok
+#>   <chr> <chr>    <dbl>    <dbl>     <dbl> <dbl>    <dbl>     <dbl>  <dbl> <int>
+#> 1 G1    moderate  2.72     2.58      2.84     1        1         3  0.419   198
+#> 2 G3    moderate  2.76     2.53      3.07     2        1         3  0.375   200
+#> 3 G2    moderate  2.89     2.51      3.36     3        1         3  0.21    200
+#> 4 G4    moderate  4.16     3.38      5.21     4        4         4  0       200
+#> 5 G1    severe    5.23     4.78      5.83     1        1         1  0.995   200
+#> 6 G2    severe    6.41     6.12      6.78     2        2         3  0       200
+#> 7 G3    severe    6.43     5.87      6.86     3        2         3  0.005   200
+#> 8 G4    severe    9.13     8.86      9.72     4        4         4  0       200
+```
+
+`p_best` is the share of resamples in which a genotype came out the most
+tolerant one. A ranking whose winner sits at `p_best = 0.35` is a
+ranking you should not select on.
 
 Draw the signature:
 

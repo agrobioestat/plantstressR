@@ -49,6 +49,7 @@ remotes::install_github("agrobioestat/plantstressR")
 | `stress_module_scores()` | The modules scored with the trait indices |
 | `stress_tolerance_index()` | The classical selection indices (`STI`, `SSI`, `GMP`, `TOL`, ...) |
 | `stress_ordination()` | The sample-level view of the trait space |
+| `stress_index_ci()` | Bootstrap limits and rank stability for the ranking |
 | `run_plantstress_app()` | The whole workflow in a Shiny dashboard, no code |
 
 Every design function takes `block =` for randomized complete block designs.
@@ -102,6 +103,16 @@ Rank the genotypes:
 ```{r isi}
 integrated_stress_index(sri, weights = "precision")
 ```
+
+But is that order real? Resample the trial and find out:
+
+```{r ci}
+stress_index_ci(sri, n_boot = 200, seed = 1)
+```
+
+`p_best` is the share of resamples in which a genotype came out the most
+tolerant one. A ranking whose winner sits at `p_best = 0.35` is a ranking you
+should not select on.
 
 Draw the signature:
 

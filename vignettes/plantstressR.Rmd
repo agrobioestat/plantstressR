@@ -224,6 +224,38 @@ plot(isi)
 plot(isi, type = "contribution")
 ```
 
+## Step 4b — is the ranking real?
+
+A table of genotypes in order looks like a decision, but it is an estimate.
+Run the trial again and the middle of the table would shuffle. Before selecting
+on a ranking, ask how much of it survives resampling:
+
+```{r ci}
+# 100 resamples keeps this vignette quick; use 500 or more for real work.
+ci <- stress_index_ci(sri_rcbd, n_boot = 100, seed = 1)
+ci
+```
+
+Three things to read here. `conf_low` and `conf_high` bracket the index itself.
+`rank_low` and `rank_high` bracket the positions the genotype occupied across
+the resamples — when they span half the table, that genotype's position is not
+information. And `p_best` is the share of resamples in which it came out first:
+the direct answer to "is this really my most tolerant material?".
+
+```{r ci-plot, fig.height = 3.6}
+plot(ci)
+```
+
+One caution about what is being resampled. A standardized index is a difference
+divided by a standard deviation, and that denominator is an estimate too. Draw
+a handful of control plants and it can collapse — in this trial the smallest
+control standard deviation, `Fv/Fm` at `0.0027`, falls to `0.0006` in the worst
+resample. Five times a smaller ruler means five times a bigger index, and the
+upper limit of the interval runs away. So `scale = "fixed"`, the default, holds
+each trait at the scaling the observed trial gave it and lets only the response
+vary. Use `scale = "resampled"` if you want the stricter reading, and expect
+long upper tails.
+
 ## Step 5 — how the traits interact
 
 A signature says *what* changed. The network says *what changed together*.

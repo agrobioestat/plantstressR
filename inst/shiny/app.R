@@ -120,6 +120,37 @@ ui <- fluidPage(
           )
         ),
         tabPanel(
+          "Is the ranking real?",
+          div(
+            class = "ps-panel",
+            p(
+              "A ranking is an estimate. This tab resamples the trial and ",
+              "recomputes the whole chain, so you can see how much of the order ",
+              "survives. ", tags$b("p_best"), " is the share of resamples in ",
+              "which a unit came out first."
+            ),
+            fluidRow(
+              column(4, numericInput("boot_n", "Resamples", 200, 20, 5000, 20)),
+              column(4, selectInput("boot_scale", "Trait scaling",
+                c("fixed", "resampled")
+              )),
+              column(4, br(), actionButton("boot_run", "Run bootstrap",
+                class = "btn-primary"
+              ))
+            ),
+            div(
+              class = "ps-hint",
+              "A few hundred resamples take seconds; a blocked design fits one ",
+              "model per trait and unit in each of them."
+            ),
+            br(),
+            plotOutput("ci_plot", height = "420px"),
+            downloadButton("dl_ci", "Download table"),
+            br(), br(),
+            tableOutput("ci_table")
+          )
+        ),
+        tabPanel(
           "Network",
           div(
             class = "ps-panel",
@@ -393,6 +424,37 @@ server <- function(input, output, session) {
     striped = TRUE, spacing = "xs", digits = 4
   )
 
+  # Ranking uncertainty ---------------------------------------------------
+
+  ci <- eventReactive(input$boot_run, {
+    req(sri())
+    withProgress(message = "Resampling the trial", value = 0.4, {
+      guard(
+        plantstressR::stress_index_ci(
+          sri(),
+          n_boot = input$boot_n, weights = input$weights,
+          scale = input$boot_scale
+        ),
+        "Bootstrap"
+      )
+    })
+  })
+
+  output$ci_plot <- renderPlot({
+    req(ci())
+    p <- guard(plot(ci()), "Bootstrap plot")
+    req(p)
+    p
+  })
+
+  output$ci_table <- renderTable(
+    {
+      req(ci())
+      as.data.frame(ci())
+    },
+    striped = TRUE, spacing = "xs", digits = 3
+  )
+
   # Network ---------------------------------------------------------------
 
   output$network_plot <- renderPlot({
@@ -483,6 +545,7 @@ server <- function(input, output, session) {
   output$dl_sri <- csv_handler("sri", sri)
   output$dl_isi <- csv_handler("isi", isi)
   output$dl_sti <- csv_handler("tolerance_indices", sti)
+  output$dl_ci <- csv_handler("ranking_uncertainty", ci)
 }
 
 shinyApp(ui, server)

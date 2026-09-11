@@ -1,3 +1,34 @@
+# plantstressR 0.4.0
+
+An uncertainty statement for the ranking.
+
+## New features
+
+* `stress_index_ci()` resamples the trial and recomputes indices, weights,
+  aggregation and ranking on every draw, returning a percentile interval for
+  the integrated index together with the range of ranks each unit took and
+  `p_best`, the share of resamples in which it came out first. A ranking table
+  looks decisive; `p_best` says whether it is. The resampling respects the
+  layout: whole blocks are drawn in a blocked trial, plants inside each
+  unit-by-treatment cell otherwise.
+* `plot()` on the result draws the index with its interval, shaded by `p_best`.
+* The dashboard gains an "Is the ranking real?" tab wired to the same function.
+
+## Details worth knowing
+
+* `stress_index_ci(scale = )` decides whether the scaling standard deviation is
+  resampled along with the response. It is an estimate too, and on few control
+  plants it can collapse -- on the bundled trial the smallest control standard
+  deviation is `0.0027` for `Fv/Fm` and reaches `0.0006` in the worst resample,
+  a fivefold shrinkage of the ruler that inflates every index measured against
+  it and produces upper limits three times the estimate. The default
+  `"fixed"` holds each trait at its observed scaling, so the interval describes
+  the plants' response rather than the yardstick; `"resampled"` recomputes
+  everything and is both slower and heavier-tailed.
+* `calculate_sri()` now keeps the columns it analysed inside the returned
+  object, which is what lets `stress_index_ci()` resample without being handed
+  the table again.
+
 # plantstressR 0.3.0
 
 Designs with blocks, an interactive dashboard, and a correction to precision
